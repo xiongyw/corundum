@@ -43,9 +43,10 @@ module axis_xgmii_tx_64 #
     parameter PTP_PERIOD_FNS = 16'h6666,
     parameter PTP_TS_ENABLE = 0,
     parameter PTP_TS_WIDTH = 96,
+    parameter PTP_TS_CTRL_IN_TUSER = 0,
     parameter PTP_TAG_ENABLE = PTP_TS_ENABLE,
     parameter PTP_TAG_WIDTH = 16,
-    parameter USER_WIDTH = (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + 1
+    parameter USER_WIDTH = (PTP_TS_ENABLE ? (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + (PTP_TS_CTRL_IN_TUSER ? 1 : 0) : 0) + 1
 )
 (
     input  wire                      clk,
@@ -78,7 +79,8 @@ module axis_xgmii_tx_64 #
     /*
      * Configuration
      */
-    input  wire [7:0]                ifg_delay,
+    input  wire [7:0]                cfg_ifg,
+    input  wire                      cfg_tx_enable,
 
     /*
      * Status
@@ -334,7 +336,7 @@ always @* begin
             // idle state - wait for data
             frame_min_count_next = MIN_FRAME_LENGTH-4-CTRL_WIDTH;
             reset_crc = 1'b1;
-            s_axis_tready_next = 1'b1;
+            s_axis_tready_next = cfg_tx_enable;
 
             // XGMII idle
             xgmii_txd_next = {CTRL_WIDTH{XGMII_IDLE}};
@@ -343,34 +345,47 @@ always @* begin
             s_tdata_next = s_axis_tdata_masked;
             s_empty_next = keep2empty(s_axis_tkeep);
 
-            if (s_axis_tvalid) begin
+            if (s_axis_tvalid && s_axis_tready) begin
                 // XGMII start and preamble
                 if (swap_lanes_reg) begin
                     // lanes swapped
-                    if (PTP_TS_WIDTH == 96) begin
-                        m_axis_ptp_ts_next[45:0] = ptp_ts[45:0] + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
-                        m_axis_ptp_ts_next[95:48] = ptp_ts[95:48];
-                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-                        m_axis_ptp_ts_valid_int_next = 1'b1;
-                    end else begin
-                        m_axis_ptp_ts_next = ptp_ts + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
-                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-                        m_axis_ptp_ts_valid_next = 1'b1;
+                    if (PTP_TS_ENABLE) begin
+                        if (PTP_TS_WIDTH == 96) begin
+                            m_axis_ptp_ts_next[45:0] = ptp_ts[45:0] + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
+                            m_axis_ptp_ts_next[95:48] = ptp_ts[95:48];
+                        end else begin
+                            m_axis_ptp_ts_next = ptp_ts + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
+                        end
                     end
                     start_packet_next = 2'b10;
                 end else begin
                     // lanes not swapped
-                    if (PTP_TS_WIDTH == 96) begin
-                        m_axis_ptp_ts_next[45:0] = ptp_ts[45:0] + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
-                        m_axis_ptp_ts_next[95:48] = ptp_ts[95:48];
-                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-                        m_axis_ptp_ts_valid_int_next = 1'b1;
-                    end else begin
-                        m_axis_ptp_ts_next = ptp_ts + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
-                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-                        m_axis_ptp_ts_valid_next = 1'b1;
+                    if (PTP_TS_ENABLE) begin
+                        if (PTP_TS_WIDTH == 96) begin
+                            m_axis_ptp_ts_next[45:0] = ptp_ts[45:0] + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
+                            m_axis_ptp_ts_next[95:48] = ptp_ts[95:48];
+                        end else begin
+                            m_axis_ptp_ts_next = ptp_ts + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
+                        end
                     end
                     start_packet_next = 2'b01;
+                end
+                if (PTP_TS_ENABLE) begin
+                    if (PTP_TS_CTRL_IN_TUSER) begin
+                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 2;
+                        if (PTP_TS_WIDTH == 96) begin
+                            m_axis_ptp_ts_valid_int_next = s_axis_tuser[1];
+                        end else begin
+                            m_axis_ptp_ts_valid_next = s_axis_tuser[1];
+                        end
+                    end else begin
+                        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
+                        if (PTP_TS_WIDTH == 96) begin
+                            m_axis_ptp_ts_valid_int_next = 1'b1;
+                        end else begin
+                            m_axis_ptp_ts_valid_next = 1'b1;
+                        end
+                    end
                 end
                 xgmii_txd_next = {ETH_SFD, {6{ETH_PRE}}, XGMII_START};
                 xgmii_txc_next = 8'b00000001;
@@ -465,7 +480,7 @@ always @* begin
             xgmii_txd_next = fcs_output_txd_0;
             xgmii_txc_next = fcs_output_txc_0;
 
-            ifg_count_next = (ifg_delay > 8'd12 ? ifg_delay : 8'd12) - ifg_offset + (swap_lanes_reg ? 8'd4 : 8'd0) + deficit_idle_count_reg;
+            ifg_count_next = (cfg_ifg > 8'd12 ? cfg_ifg : 8'd12) - ifg_offset + (swap_lanes_reg ? 8'd4 : 8'd0) + deficit_idle_count_reg;
             if (s_empty_reg <= 4) begin
                 state_next = STATE_FCS_2;
             end else begin
@@ -491,14 +506,14 @@ always @* begin
                         ifg_count_next = 8'd0;
                         swap_lanes_next = 1'b0;
                     end
-                    s_axis_tready_next = 1'b1;
+                    s_axis_tready_next = cfg_tx_enable;
                     state_next = STATE_IDLE;
                 end
             end else begin
                 if (ifg_count_next > 8'd4) begin
                     state_next = STATE_IFG;
                 end else begin
-                    s_axis_tready_next = 1'b1;
+                    s_axis_tready_next = cfg_tx_enable;
                     swap_lanes_next = ifg_count_next != 0;
                     state_next = STATE_IDLE;
                 end
@@ -524,14 +539,14 @@ always @* begin
                         ifg_count_next = 8'd0;
                         swap_lanes_next = 1'b0;
                     end
-                    s_axis_tready_next = 1'b1;
+                    s_axis_tready_next = cfg_tx_enable;
                     state_next = STATE_IDLE;
                 end
             end else begin
                 if (ifg_count_next > 8'd4) begin
                     state_next = STATE_IFG;
                 end else begin
-                    s_axis_tready_next = 1'b1;
+                    s_axis_tready_next = cfg_tx_enable;
                     swap_lanes_next = ifg_count_next != 0;
                     state_next = STATE_IDLE;
                 end
@@ -563,14 +578,14 @@ always @* begin
                                 ifg_count_next = 8'd0;
                                 swap_lanes_next = 1'b0;
                             end
-                            s_axis_tready_next = 1'b1;
+                            s_axis_tready_next = cfg_tx_enable;
                             state_next = STATE_IDLE;
                         end
                     end else begin
                         if (ifg_count_next > 8'd4) begin
                             state_next = STATE_IFG;
                         end else begin
-                            s_axis_tready_next = 1'b1;
+                            s_axis_tready_next = cfg_tx_enable;
                             swap_lanes_next = ifg_count_next != 0;
                             state_next = STATE_IDLE;
                         end

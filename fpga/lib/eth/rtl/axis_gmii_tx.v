@@ -38,9 +38,10 @@ module axis_gmii_tx #
     parameter MIN_FRAME_LENGTH = 64,
     parameter PTP_TS_ENABLE = 0,
     parameter PTP_TS_WIDTH = 96,
+    parameter PTP_TS_CTRL_IN_TUSER = 0,
     parameter PTP_TAG_ENABLE = PTP_TS_ENABLE,
     parameter PTP_TAG_WIDTH = 16,
-    parameter USER_WIDTH = (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + 1
+    parameter USER_WIDTH = (PTP_TS_ENABLE ? (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + (PTP_TS_CTRL_IN_TUSER ? 1 : 0) : 0) + 1
 )
 (
     input  wire                      clk,
@@ -79,7 +80,8 @@ module axis_gmii_tx #
     /*
      * Configuration
      */
-    input  wire [7:0]                ifg_delay,
+    input  wire [7:0]                cfg_ifg,
+    input  wire                      cfg_tx_enable,
 
     /*
      * Status
@@ -136,6 +138,7 @@ reg [PTP_TS_WIDTH-1:0] m_axis_ptp_ts_reg = 0, m_axis_ptp_ts_next;
 reg [PTP_TAG_WIDTH-1:0] m_axis_ptp_ts_tag_reg = 0, m_axis_ptp_ts_tag_next;
 reg m_axis_ptp_ts_valid_reg = 1'b0, m_axis_ptp_ts_valid_next;
 
+reg start_packet_int_reg = 1'b0, start_packet_int_next;
 reg start_packet_reg = 1'b0, start_packet_next;
 reg error_underflow_reg = 1'b0, error_underflow_next;
 
@@ -195,6 +198,18 @@ always @* begin
     gmii_tx_en_next = 1'b0;
     gmii_tx_er_next = 1'b0;
 
+    if (start_packet_reg && PTP_TS_ENABLE) begin
+        m_axis_ptp_ts_next = ptp_ts;
+        if (PTP_TS_CTRL_IN_TUSER) begin
+            m_axis_ptp_ts_tag_next = s_axis_tuser >> 2;
+            m_axis_ptp_ts_valid_next = s_axis_tuser[1];
+        end else begin
+            m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
+            m_axis_ptp_ts_valid_next = 1'b1;
+        end
+    end
+
+    start_packet_int_next = start_packet_int_reg;
     start_packet_next = 1'b0;
     error_underflow_next = 1'b0;
 
@@ -211,6 +226,10 @@ always @* begin
         gmii_tx_en_next = gmii_tx_en_reg;
         gmii_tx_er_next = gmii_tx_er_reg;
         state_next = state_reg;
+        if (start_packet_int_reg) begin
+            start_packet_int_next = 1'b0;
+            start_packet_next = 1'b1;
+        end
     end else begin
         case (state_reg)
             STATE_IDLE: begin
@@ -222,7 +241,7 @@ always @* begin
 
                 frame_min_count_next = MIN_FRAME_LENGTH-4-1;
 
-                if (s_axis_tvalid) begin
+                if (s_axis_tvalid && cfg_tx_enable) begin
                     mii_odd_next = 1'b1;
                     gmii_txd_next = ETH_PRE;
                     gmii_tx_en_next = 1'b1;
@@ -253,10 +272,11 @@ always @* begin
                         s_tdata_next = s_axis_tdata;
                     end
                     gmii_txd_next = ETH_SFD;
-                    m_axis_ptp_ts_next = ptp_ts;
-                    m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-                    m_axis_ptp_ts_valid_next = 1'b1;
-                    start_packet_next = 1'b1;
+                    if (mii_select) begin
+                        start_packet_int_next = 1'b1;
+                    end else begin
+                        start_packet_next = 1'b1;
+                    end
                     state_next = STATE_PAYLOAD;
                 end else begin
                     state_next = STATE_PREAMBLE;
@@ -367,7 +387,7 @@ always @* begin
                 if (s_axis_tvalid) begin
                     if (s_axis_tlast) begin
                         s_axis_tready_next = 1'b0;
-                        if (frame_ptr_reg < ifg_delay-1) begin
+                        if (frame_ptr_reg < cfg_ifg-1) begin
                             state_next = STATE_IFG;
                         end else begin
                             state_next = STATE_IDLE;
@@ -385,7 +405,7 @@ always @* begin
                 mii_odd_next = 1'b1;
                 frame_ptr_next = frame_ptr_reg + 1;
 
-                if (frame_ptr_reg < ifg_delay-1) begin
+                if (frame_ptr_reg < cfg_ifg-1) begin
                     state_next = STATE_IFG;
                 end else begin
                     state_next = STATE_IDLE;
@@ -427,6 +447,7 @@ always @(posedge clk) begin
         crc_state <= crc_next;
     end
 
+    start_packet_int_reg <= start_packet_int_next;
     start_packet_reg <= start_packet_next;
     error_underflow_reg <= error_underflow_next;
 
@@ -440,6 +461,7 @@ always @(posedge clk) begin
         gmii_tx_en_reg <= 1'b0;
         gmii_tx_er_reg <= 1'b0;
 
+        start_packet_int_reg <= 1'b0;
         start_packet_reg <= 1'b0;
         error_underflow_reg <= 1'b0;
     end

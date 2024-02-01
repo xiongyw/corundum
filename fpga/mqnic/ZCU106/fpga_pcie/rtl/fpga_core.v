@@ -43,7 +43,6 @@ module fpga_core #
     parameter PTP_TS_WIDTH = 96,
     parameter PTP_CLOCK_PIPELINE = 0,
     parameter PTP_CLOCK_CDC_PIPELINE = 0,
-    parameter PTP_USE_SAMPLE_CLOCK = 1,
     parameter PTP_PORT_CDC_PIPELINE = 0,
     parameter PTP_PEROUT_ENABLE = 1,
     parameter PTP_PEROUT_COUNT = 1,
@@ -286,12 +285,12 @@ module fpga_core #
     input  wire                               sfp0_tx_rst,
     output wire [63:0]                        sfp0_txd,
     output wire [7:0]                         sfp0_txc,
-    output wire                               sfp0_tx_prbs31_enable,
+    output wire                               sfp0_cfg_tx_prbs31_enable,
     input  wire                               sfp0_rx_clk,
     input  wire                               sfp0_rx_rst,
     input  wire [63:0]                        sfp0_rxd,
     input  wire [7:0]                         sfp0_rxc,
-    output wire                               sfp0_rx_prbs31_enable,
+    output wire                               sfp0_cfg_rx_prbs31_enable,
     input  wire [6:0]                         sfp0_rx_error_count,
     input  wire                               sfp0_rx_status,
     output wire                               sfp0_tx_disable_b,
@@ -300,12 +299,12 @@ module fpga_core #
     input  wire                               sfp1_tx_rst,
     output wire [63:0]                        sfp1_txd,
     output wire [7:0]                         sfp1_txc,
-    output wire                               sfp1_tx_prbs31_enable,
+    output wire                               sfp1_cfg_tx_prbs31_enable,
     input  wire                               sfp1_rx_clk,
     input  wire                               sfp1_rx_rst,
     input  wire [63:0]                        sfp1_rxd,
     input  wire [7:0]                         sfp1_rxc,
-    output wire                               sfp1_rx_prbs31_enable,
+    output wire                               sfp1_cfg_rx_prbs31_enable,
     input  wire [6:0]                         sfp1_rx_error_count,
     input  wire                               sfp1_rx_status,
     output wire                               sfp1_tx_disable_b,
@@ -372,7 +371,7 @@ parameter F_COUNT = PF_COUNT+VF_COUNT;
 
 parameter AXIL_CTRL_STRB_WIDTH = (AXIL_CTRL_DATA_WIDTH/8);
 parameter AXIL_IF_CTRL_ADDR_WIDTH = AXIL_CTRL_ADDR_WIDTH-$clog2(IF_COUNT);
-parameter AXIL_CSR_ADDR_WIDTH = AXIL_IF_CTRL_ADDR_WIDTH-5-$clog2((PORTS_PER_IF+3)/8);
+parameter AXIL_CSR_ADDR_WIDTH = AXIL_IF_CTRL_ADDR_WIDTH-5-$clog2((SCHED_PER_IF+4+7)/8);
 
 localparam RB_BASE_ADDR = 16'h1000;
 localparam RBB = RB_BASE_ADDR & {AXIL_CTRL_ADDR_WIDTH{1'b1}};
@@ -408,13 +407,16 @@ wire                             axil_csr_rvalid;
 wire                             axil_csr_rready;
 
 // PTP
-wire [PTP_TS_WIDTH-1:0]     ptp_ts_96;
-wire                        ptp_ts_step;
-wire                        ptp_pps;
-wire                        ptp_pps_str;
-wire [PTP_TS_WIDTH-1:0]     ptp_sync_ts_96;
-wire                        ptp_sync_ts_step;
-wire                        ptp_sync_pps;
+wire         ptp_td_sd;
+wire         ptp_pps;
+wire         ptp_pps_str;
+wire         ptp_sync_locked;
+wire [63:0]  ptp_sync_ts_rel;
+wire         ptp_sync_ts_rel_step;
+wire [95:0]  ptp_sync_ts_tod;
+wire         ptp_sync_ts_tod_step;
+wire         ptp_sync_pps;
+wire         ptp_sync_pps_str;
 
 wire [PTP_PEROUT_COUNT-1:0] ptp_perout_locked;
 wire [PTP_PEROUT_COUNT-1:0] ptp_perout_error;
@@ -605,8 +607,8 @@ if (TDMA_BER_ENABLE) begin
         .phy_tx_clk({sfp1_tx_clk, sfp0_tx_clk}),
         .phy_rx_clk({sfp1_rx_clk, sfp0_rx_clk}),
         .phy_rx_error_count({sfp1_rx_error_count, sfp0_rx_error_count}),
-        .phy_tx_prbs31_enable({sfp1_tx_prbs31_enable, sfp0_tx_prbs31_enable}),
-        .phy_rx_prbs31_enable({sfp1_rx_prbs31_enable, sfp0_rx_prbs31_enable}),
+        .phy_cfg_tx_prbs31_enable({sfp1_cfg_tx_prbs31_enable, sfp0_cfg_tx_prbs31_enable}),
+        .phy_cfg_rx_prbs31_enable({sfp1_cfg_rx_prbs31_enable, sfp0_cfg_rx_prbs31_enable}),
         .s_axil_awaddr(axil_csr_awaddr),
         .s_axil_awprot(axil_csr_awprot),
         .s_axil_awvalid(axil_csr_awvalid),
@@ -626,16 +628,16 @@ if (TDMA_BER_ENABLE) begin
         .s_axil_rresp(axil_csr_rresp),
         .s_axil_rvalid(axil_csr_rvalid),
         .s_axil_rready(axil_csr_rready),
-        .ptp_ts_96(ptp_sync_ts_96),
-        .ptp_ts_step(ptp_sync_ts_step)
+        .ptp_ts_96(ptp_sync_ts_tod),
+        .ptp_ts_step(ptp_sync_ts_tod_step)
     );
 
 end else begin
 
-    assign sfp0_tx_prbs31_enable = 1'b0;
-    assign sfp0_rx_prbs31_enable = 1'b0;
-    assign sfp1_tx_prbs31_enable = 1'b0;
-    assign sfp1_rx_prbs31_enable = 1'b0;
+    assign sfp0_cfg_tx_prbs31_enable = 1'b0;
+    assign sfp0_cfg_rx_prbs31_enable = 1'b0;
+    assign sfp1_cfg_tx_prbs31_enable = 1'b0;
+    assign sfp1_cfg_rx_prbs31_enable = 1'b0;
 
 end
 
@@ -647,8 +649,8 @@ assign led[7] = ptp_pps_str;
 wire [PORT_COUNT-1:0]                         eth_tx_clk;
 wire [PORT_COUNT-1:0]                         eth_tx_rst;
 
-wire [PORT_COUNT*PTP_TS_WIDTH-1:0]            eth_tx_ptp_ts_96;
-wire [PORT_COUNT-1:0]                         eth_tx_ptp_ts_step;
+wire [PORT_COUNT*PTP_TS_WIDTH-1:0]            eth_tx_ptp_ts_tod;
+wire [PORT_COUNT-1:0]                         eth_tx_ptp_ts_tod_step;
 
 wire [PORT_COUNT*AXIS_ETH_DATA_WIDTH-1:0]     axis_eth_tx_tdata;
 wire [PORT_COUNT*AXIS_ETH_KEEP_WIDTH-1:0]     axis_eth_tx_tkeep;
@@ -667,8 +669,8 @@ wire [PORT_COUNT-1:0]                         eth_tx_status;
 wire [PORT_COUNT-1:0]                         eth_rx_clk;
 wire [PORT_COUNT-1:0]                         eth_rx_rst;
 
-wire [PORT_COUNT*PTP_TS_WIDTH-1:0]            eth_rx_ptp_ts_96;
-wire [PORT_COUNT-1:0]                         eth_rx_ptp_ts_step;
+wire [PORT_COUNT*PTP_TS_WIDTH-1:0]            eth_rx_ptp_ts_tod;
+wire [PORT_COUNT-1:0]                         eth_rx_ptp_ts_tod_step;
 
 wire [PORT_COUNT*AXIS_ETH_DATA_WIDTH-1:0]     axis_eth_rx_tdata;
 wire [PORT_COUNT*AXIS_ETH_KEEP_WIDTH-1:0]     axis_eth_rx_tkeep;
@@ -781,8 +783,8 @@ generate
             .xgmii_txd(port_xgmii_txd[n*XGMII_DATA_WIDTH +: XGMII_DATA_WIDTH]),
             .xgmii_txc(port_xgmii_txc[n*XGMII_CTRL_WIDTH +: XGMII_CTRL_WIDTH]),
 
-            .tx_ptp_ts(eth_tx_ptp_ts_96[n*PTP_TS_WIDTH +: PTP_TS_WIDTH]),
-            .rx_ptp_ts(eth_rx_ptp_ts_96[n*PTP_TS_WIDTH +: PTP_TS_WIDTH]),
+            .tx_ptp_ts(eth_tx_ptp_ts_tod[n*PTP_TS_WIDTH +: PTP_TS_WIDTH]),
+            .rx_ptp_ts(eth_rx_ptp_ts_tod[n*PTP_TS_WIDTH +: PTP_TS_WIDTH]),
             .tx_axis_ptp_ts(axis_eth_tx_ptp_ts[n*PTP_TS_WIDTH +: PTP_TS_WIDTH]),
             .tx_axis_ptp_ts_tag(axis_eth_tx_ptp_ts_tag[n*TX_TAG_WIDTH +: TX_TAG_WIDTH]),
             .tx_axis_ptp_ts_valid(axis_eth_tx_ptp_ts_valid[n +: 1]),
@@ -791,7 +793,9 @@ generate
             .rx_error_bad_frame(),
             .rx_error_bad_fcs(),
 
-            .ifg_delay(8'd12)
+            .cfg_ifg(8'd12),
+            .cfg_tx_enable(1'b1),
+            .cfg_rx_enable(1'b1)
         );
 
     end
@@ -826,7 +830,6 @@ mqnic_core_pcie_us #(
     .PTP_TS_WIDTH(PTP_TS_WIDTH),
     .PTP_CLOCK_PIPELINE(PTP_CLOCK_PIPELINE),
     .PTP_CLOCK_CDC_PIPELINE(PTP_CLOCK_CDC_PIPELINE),
-    .PTP_USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK),
     .PTP_SEPARATE_TX_CLOCK(0),
     .PTP_SEPARATE_RX_CLOCK(0),
     .PTP_PORT_CDC_PIPELINE(PTP_PORT_CDC_PIPELINE),
@@ -1112,13 +1115,16 @@ core_inst (
     .ptp_clk(ptp_clk),
     .ptp_rst(ptp_rst),
     .ptp_sample_clk(ptp_sample_clk),
+    .ptp_td_sd(ptp_td_sd),
     .ptp_pps(ptp_pps),
     .ptp_pps_str(ptp_pps_str),
-    .ptp_ts_96(ptp_ts_96),
-    .ptp_ts_step(ptp_ts_step),
+    .ptp_sync_locked(ptp_sync_locked),
+    .ptp_sync_ts_rel(ptp_sync_ts_rel),
+    .ptp_sync_ts_rel_step(ptp_sync_ts_rel_step),
+    .ptp_sync_ts_tod(ptp_sync_ts_tod),
+    .ptp_sync_ts_tod_step(ptp_sync_ts_tod_step),
     .ptp_sync_pps(ptp_sync_pps),
-    .ptp_sync_ts_96(ptp_sync_ts_96),
-    .ptp_sync_ts_step(ptp_sync_ts_step),
+    .ptp_sync_pps_str(ptp_sync_pps_str),
     .ptp_perout_locked(ptp_perout_locked),
     .ptp_perout_error(ptp_perout_error),
     .ptp_perout_pulse(ptp_perout_pulse),
@@ -1131,8 +1137,8 @@ core_inst (
 
     .eth_tx_ptp_clk(0),
     .eth_tx_ptp_rst(0),
-    .eth_tx_ptp_ts_96(eth_tx_ptp_ts_96),
-    .eth_tx_ptp_ts_step(eth_tx_ptp_ts_step),
+    .eth_tx_ptp_ts_tod(eth_tx_ptp_ts_tod),
+    .eth_tx_ptp_ts_tod_step(eth_tx_ptp_ts_tod_step),
 
     .m_axis_eth_tx_tdata(axis_eth_tx_tdata),
     .m_axis_eth_tx_tkeep(axis_eth_tx_tkeep),
@@ -1153,8 +1159,8 @@ core_inst (
 
     .eth_rx_ptp_clk(0),
     .eth_rx_ptp_rst(0),
-    .eth_rx_ptp_ts_96(eth_rx_ptp_ts_96),
-    .eth_rx_ptp_ts_step(eth_rx_ptp_ts_step),
+    .eth_rx_ptp_ts_tod(eth_rx_ptp_ts_tod),
+    .eth_rx_ptp_ts_tod_step(eth_rx_ptp_ts_tod_step),
 
     .s_axis_eth_rx_tdata(axis_eth_rx_tdata),
     .s_axis_eth_rx_tkeep(axis_eth_rx_tkeep),

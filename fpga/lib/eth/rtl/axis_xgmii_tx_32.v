@@ -41,9 +41,10 @@ module axis_xgmii_tx_32 #
     parameter MIN_FRAME_LENGTH = 64,
     parameter PTP_TS_ENABLE = 0,
     parameter PTP_TS_WIDTH = 96,
+    parameter PTP_TS_CTRL_IN_TUSER = 0,
     parameter PTP_TAG_ENABLE = PTP_TS_ENABLE,
     parameter PTP_TAG_WIDTH = 16,
-    parameter USER_WIDTH = (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + 1
+    parameter USER_WIDTH = (PTP_TS_ENABLE ? (PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + (PTP_TS_CTRL_IN_TUSER ? 1 : 0) : 0) + 1
 )
 (
     input  wire                      clk,
@@ -76,7 +77,8 @@ module axis_xgmii_tx_32 #
     /*
      * Configuration
      */
-    input  wire [7:0]                ifg_delay,
+    input  wire [7:0]                cfg_ifg,
+    input  wire                      cfg_tx_enable,
 
     /*
      * Status
@@ -276,10 +278,15 @@ always @* begin
     m_axis_ptp_ts_tag_next = m_axis_ptp_ts_tag_reg;
     m_axis_ptp_ts_valid_next = 1'b0;
 
-    if (start_packet_reg) begin
+    if (start_packet_reg && PTP_TS_ENABLE) begin
         m_axis_ptp_ts_next = ptp_ts;
-        m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
-        m_axis_ptp_ts_valid_next = 1'b1;
+        if (PTP_TS_CTRL_IN_TUSER) begin
+            m_axis_ptp_ts_tag_next = s_axis_tuser >> 2;
+            m_axis_ptp_ts_valid_next = s_axis_tuser[1];
+        end else begin
+            m_axis_ptp_ts_tag_next = s_axis_tuser >> 1;
+            m_axis_ptp_ts_valid_next = 1'b1;
+        end
     end
 
     // XGMII idle
@@ -302,7 +309,7 @@ always @* begin
             s_tdata_next = s_axis_tdata_masked;
             s_empty_next = keep2empty(s_axis_tkeep);
 
-            if (s_axis_tvalid) begin
+            if (s_axis_tvalid && cfg_tx_enable) begin
                 // XGMII start and preamble
                 xgmii_txd_next = {{3{ETH_PRE}}, XGMII_START};
                 xgmii_txc_next = 4'b0001;
@@ -408,7 +415,7 @@ always @* begin
             xgmii_txd_next = fcs_output_txd_0;
             xgmii_txc_next = fcs_output_txc_0;
 
-            ifg_count_next = (ifg_delay > 8'd12 ? ifg_delay : 8'd12) - ifg_offset + deficit_idle_count_reg;
+            ifg_count_next = (cfg_ifg > 8'd12 ? cfg_ifg : 8'd12) - ifg_offset + deficit_idle_count_reg;
             state_next = STATE_FCS_2;
         end
         STATE_FCS_2: begin

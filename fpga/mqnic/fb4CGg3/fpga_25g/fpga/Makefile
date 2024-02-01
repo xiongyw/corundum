@@ -9,6 +9,7 @@ FPGA_ARCH = virtexuplus
 # Files for synthesis
 SYN_FILES = rtl/fpga.v
 SYN_FILES += rtl/fpga_core.v
+SYN_FILES += rtl/bmc_spi.v
 SYN_FILES += rtl/sync_signal.v
 SYN_FILES += rtl/common/mqnic_core_pcie_us.v
 SYN_FILES += rtl/common/mqnic_core_pcie.v
@@ -62,6 +63,10 @@ SYN_FILES += rtl/common/led_sreg_driver.v
 SYN_FILES += lib/eth/rtl/eth_mac_10g.v
 SYN_FILES += lib/eth/rtl/axis_xgmii_rx_64.v
 SYN_FILES += lib/eth/rtl/axis_xgmii_tx_64.v
+SYN_FILES += lib/eth/rtl/mac_ctrl_rx.v
+SYN_FILES += lib/eth/rtl/mac_ctrl_tx.v
+SYN_FILES += lib/eth/rtl/mac_pause_ctrl_rx.v
+SYN_FILES += lib/eth/rtl/mac_pause_ctrl_tx.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g_rx.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g_rx_if.v
@@ -73,8 +78,8 @@ SYN_FILES += lib/eth/rtl/eth_phy_10g_tx_if.v
 SYN_FILES += lib/eth/rtl/xgmii_baser_dec_64.v
 SYN_FILES += lib/eth/rtl/xgmii_baser_enc_64.v
 SYN_FILES += lib/eth/rtl/lfsr.v
-SYN_FILES += lib/eth/rtl/ptp_clock.v
-SYN_FILES += lib/eth/rtl/ptp_clock_cdc.v
+SYN_FILES += lib/eth/rtl/ptp_td_phc.v
+SYN_FILES += lib/eth/rtl/ptp_td_leaf.v
 SYN_FILES += lib/eth/rtl/ptp_perout.v
 SYN_FILES += lib/axi/rtl/axil_interconnect.v
 SYN_FILES += lib/axi/rtl/axil_crossbar.v
@@ -129,9 +134,10 @@ SYN_FILES += lib/pcie/rtl/pulse_merge.v
 # XDC files
 XDC_FILES = fpga.xdc
 XDC_FILES += placement.xdc
+XDC_FILES += boot.xdc
 XDC_FILES += lib/axis/syn/vivado/axis_async_fifo.tcl
 XDC_FILES += lib/axis/syn/vivado/sync_reset.tcl
-XDC_FILES += lib/eth/syn/vivado/ptp_clock_cdc.tcl
+XDC_FILES += lib/eth/syn/vivado/ptp_td_leaf.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_port.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_ptp_clock.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_rb_clk_info.tcl
@@ -143,6 +149,8 @@ XDC_FILES += ../../../common/syn/vivado/led_sreg_driver.tcl
 # IP
 IP_TCL_FILES = ip/pcie4_uscale_plus_0.tcl
 IP_TCL_FILES += ip/eth_xcvr_gty.tcl
+#IP_TCL_FILES += ip/ddr4_0.tcl
+#IP_TCL_FILES += ip/ddr4_sodimm_0.tcl
 
 # Configuration
 CONFIG_TCL_FILES = ./config.tcl

@@ -74,6 +74,11 @@ module fpga #
     parameter TX_CHECKSUM_ENABLE = 1,
     parameter RX_HASH_ENABLE = 1,
     parameter RX_CHECKSUM_ENABLE = 1,
+    parameter PFC_ENABLE = 1,
+    parameter LFC_ENABLE = PFC_ENABLE,
+    parameter ENABLE_PADDING = 1,
+    parameter ENABLE_DIC = 1,
+    parameter MIN_FRAME_LENGTH = 64,
     parameter TX_FIFO_DEPTH = 32768,
     parameter RX_FIFO_DEPTH = 32768,
     parameter MAX_TX_SIZE = 9214,
@@ -176,22 +181,10 @@ module fpga #
     /*
      * Ethernet: QSFP28
      */
-    output wire         qsfp_0_tx_0_p,
-    output wire         qsfp_0_tx_0_n,
-    input  wire         qsfp_0_rx_0_p,
-    input  wire         qsfp_0_rx_0_n,
-    output wire         qsfp_0_tx_1_p,
-    output wire         qsfp_0_tx_1_n,
-    input  wire         qsfp_0_rx_1_p,
-    input  wire         qsfp_0_rx_1_n,
-    output wire         qsfp_0_tx_2_p,
-    output wire         qsfp_0_tx_2_n,
-    input  wire         qsfp_0_rx_2_p,
-    input  wire         qsfp_0_rx_2_n,
-    output wire         qsfp_0_tx_3_p,
-    output wire         qsfp_0_tx_3_n,
-    input  wire         qsfp_0_rx_3_p,
-    input  wire         qsfp_0_rx_3_n,
+    output wire [3:0]   qsfp_0_tx_p,
+    output wire [3:0]   qsfp_0_tx_n,
+    input  wire [3:0]   qsfp_0_rx_p,
+    input  wire [3:0]   qsfp_0_rx_n,
     input  wire         qsfp_mgt_refclk_p,
     input  wire         qsfp_mgt_refclk_n,
     output wire         qsfp_0_modsell,
@@ -200,22 +193,10 @@ module fpga #
     input  wire         qsfp_0_intl,
     output wire         qsfp_0_lpmode,
 
-    output wire         qsfp_1_tx_0_p,
-    output wire         qsfp_1_tx_0_n,
-    input  wire         qsfp_1_rx_0_p,
-    input  wire         qsfp_1_rx_0_n,
-    output wire         qsfp_1_tx_1_p,
-    output wire         qsfp_1_tx_1_n,
-    input  wire         qsfp_1_rx_1_p,
-    input  wire         qsfp_1_rx_1_n,
-    output wire         qsfp_1_tx_2_p,
-    output wire         qsfp_1_tx_2_n,
-    input  wire         qsfp_1_rx_2_p,
-    input  wire         qsfp_1_rx_2_n,
-    output wire         qsfp_1_tx_3_p,
-    output wire         qsfp_1_tx_3_n,
-    input  wire         qsfp_1_rx_3_p,
-    input  wire         qsfp_1_rx_3_n,
+    output wire [3:0]   qsfp_1_tx_p,
+    output wire [3:0]   qsfp_1_tx_n,
+    input  wire [3:0]   qsfp_1_rx_p,
+    input  wire [3:0]   qsfp_1_rx_n,
     output wire         qsfp_1_modsell,
     output wire         qsfp_1_resetl,
     input  wire         qsfp_1_modprsl,
@@ -259,7 +240,6 @@ module fpga #
 parameter PTP_CLK_PERIOD_NS_NUM = 4;
 parameter PTP_CLK_PERIOD_NS_DENOM = 1;
 parameter PTP_TS_WIDTH = 96;
-parameter PTP_USE_SAMPLE_CLOCK = 1;
 parameter IF_PTP_PERIOD_NS = 6'h2;
 parameter IF_PTP_PERIOD_FNS = 16'h8F5C;
 
@@ -971,45 +951,45 @@ wire                         qsfp_0_tx_clk_0_int;
 wire                         qsfp_0_tx_rst_0_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_txd_0_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_txc_0_int;
-wire                         qsfp_0_tx_prbs31_enable_0_int;
+wire                         qsfp_0_cfg_tx_prbs31_enable_0_int;
 wire                         qsfp_0_rx_clk_0_int;
 wire                         qsfp_0_rx_rst_0_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_rxd_0_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_rxc_0_int;
-wire                         qsfp_0_rx_prbs31_enable_0_int;
+wire                         qsfp_0_cfg_rx_prbs31_enable_0_int;
 wire [6:0]                   qsfp_0_rx_error_count_0_int;
 wire                         qsfp_0_tx_clk_1_int;
 wire                         qsfp_0_tx_rst_1_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_txd_1_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_txc_1_int;
-wire                         qsfp_0_tx_prbs31_enable_1_int;
+wire                         qsfp_0_cfg_tx_prbs31_enable_1_int;
 wire                         qsfp_0_rx_clk_1_int;
 wire                         qsfp_0_rx_rst_1_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_rxd_1_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_rxc_1_int;
-wire                         qsfp_0_rx_prbs31_enable_1_int;
+wire                         qsfp_0_cfg_rx_prbs31_enable_1_int;
 wire [6:0]                   qsfp_0_rx_error_count_1_int;
 wire                         qsfp_0_tx_clk_2_int;
 wire                         qsfp_0_tx_rst_2_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_txd_2_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_txc_2_int;
-wire                         qsfp_0_tx_prbs31_enable_2_int;
+wire                         qsfp_0_cfg_tx_prbs31_enable_2_int;
 wire                         qsfp_0_rx_clk_2_int;
 wire                         qsfp_0_rx_rst_2_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_rxd_2_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_rxc_2_int;
-wire                         qsfp_0_rx_prbs31_enable_2_int;
+wire                         qsfp_0_cfg_rx_prbs31_enable_2_int;
 wire [6:0]                   qsfp_0_rx_error_count_2_int;
 wire                         qsfp_0_tx_clk_3_int;
 wire                         qsfp_0_tx_rst_3_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_txd_3_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_txc_3_int;
-wire                         qsfp_0_tx_prbs31_enable_3_int;
+wire                         qsfp_0_cfg_tx_prbs31_enable_3_int;
 wire                         qsfp_0_rx_clk_3_int;
 wire                         qsfp_0_rx_rst_3_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_0_rxd_3_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_0_rxc_3_int;
-wire                         qsfp_0_rx_prbs31_enable_3_int;
+wire                         qsfp_0_cfg_rx_prbs31_enable_3_int;
 wire [6:0]                   qsfp_0_rx_error_count_3_int;
 
 wire        qsfp_0_drp_clk = clk_125mhz_int;
@@ -1082,7 +1062,20 @@ qsfp_0_phy_quad_inst (
      * Common
      */
     .xcvr_gtpowergood_out(qsfp_0_gtpowergood),
-    .xcvr_ref_clk(qsfp_mgt_refclk),
+    .xcvr_gtrefclk00_in(qsfp_mgt_refclk),
+    .xcvr_qpll0pd_in(1'b0),
+    .xcvr_qpll0reset_in(1'b0),
+    .xcvr_qpll0pcierate_in(3'd0),
+    .xcvr_qpll0lock_out(),
+    .xcvr_qpll0clk_out(),
+    .xcvr_qpll0refclk_out(),
+    .xcvr_gtrefclk01_in(qsfp_mgt_refclk),
+    .xcvr_qpll1pd_in(1'b0),
+    .xcvr_qpll1reset_in(1'b0),
+    .xcvr_qpll1pcierate_in(3'd0),
+    .xcvr_qpll1lock_out(),
+    .xcvr_qpll1clk_out(),
+    .xcvr_qpll1refclk_out(),
 
     /*
      * DRP
@@ -1099,10 +1092,10 @@ qsfp_0_phy_quad_inst (
     /*
      * Serial data
      */
-    .xcvr_txp({qsfp_0_tx_3_p, qsfp_0_tx_2_p, qsfp_0_tx_1_p, qsfp_0_tx_0_p}),
-    .xcvr_txn({qsfp_0_tx_3_n, qsfp_0_tx_2_n, qsfp_0_tx_1_n, qsfp_0_tx_0_n}),
-    .xcvr_rxp({qsfp_0_rx_3_p, qsfp_0_rx_2_p, qsfp_0_rx_1_p, qsfp_0_rx_0_p}),
-    .xcvr_rxn({qsfp_0_rx_3_n, qsfp_0_rx_2_n, qsfp_0_rx_1_n, qsfp_0_rx_0_n}),
+    .xcvr_txp(qsfp_0_tx_p),
+    .xcvr_txn(qsfp_0_tx_n),
+    .xcvr_rxp(qsfp_0_rx_p),
+    .xcvr_rxn(qsfp_0_rx_n),
 
     /*
      * PHY connections
@@ -1122,8 +1115,8 @@ qsfp_0_phy_quad_inst (
     .phy_1_rx_block_lock(qsfp_0_rx_block_lock_0),
     .phy_1_rx_status(qsfp_0_rx_status_0),
     .phy_1_rx_high_ber(),
-    .phy_1_tx_prbs31_enable(qsfp_0_tx_prbs31_enable_0_int),
-    .phy_1_rx_prbs31_enable(qsfp_0_rx_prbs31_enable_0_int),
+    .phy_1_cfg_tx_prbs31_enable(qsfp_0_cfg_tx_prbs31_enable_0_int),
+    .phy_1_cfg_rx_prbs31_enable(qsfp_0_cfg_rx_prbs31_enable_0_int),
 
     .phy_2_tx_clk(qsfp_0_tx_clk_1_int),
     .phy_2_tx_rst(qsfp_0_tx_rst_1_int),
@@ -1140,8 +1133,8 @@ qsfp_0_phy_quad_inst (
     .phy_2_rx_block_lock(qsfp_0_rx_block_lock_1),
     .phy_2_rx_status(qsfp_0_rx_status_1),
     .phy_2_rx_high_ber(),
-    .phy_2_tx_prbs31_enable(qsfp_0_tx_prbs31_enable_1_int),
-    .phy_2_rx_prbs31_enable(qsfp_0_rx_prbs31_enable_1_int),
+    .phy_2_cfg_tx_prbs31_enable(qsfp_0_cfg_tx_prbs31_enable_1_int),
+    .phy_2_cfg_rx_prbs31_enable(qsfp_0_cfg_rx_prbs31_enable_1_int),
 
     .phy_3_tx_clk(qsfp_0_tx_clk_2_int),
     .phy_3_tx_rst(qsfp_0_tx_rst_2_int),
@@ -1158,8 +1151,8 @@ qsfp_0_phy_quad_inst (
     .phy_3_rx_block_lock(qsfp_0_rx_block_lock_2),
     .phy_3_rx_status(qsfp_0_rx_status_2),
     .phy_3_rx_high_ber(),
-    .phy_3_tx_prbs31_enable(qsfp_0_tx_prbs31_enable_2_int),
-    .phy_3_rx_prbs31_enable(qsfp_0_rx_prbs31_enable_2_int),
+    .phy_3_cfg_tx_prbs31_enable(qsfp_0_cfg_tx_prbs31_enable_2_int),
+    .phy_3_cfg_rx_prbs31_enable(qsfp_0_cfg_rx_prbs31_enable_2_int),
 
     .phy_4_tx_clk(qsfp_0_tx_clk_3_int),
     .phy_4_tx_rst(qsfp_0_tx_rst_3_int),
@@ -1176,8 +1169,8 @@ qsfp_0_phy_quad_inst (
     .phy_4_rx_block_lock(qsfp_0_rx_block_lock_3),
     .phy_4_rx_status(qsfp_0_rx_status_3),
     .phy_4_rx_high_ber(),
-    .phy_4_tx_prbs31_enable(qsfp_0_tx_prbs31_enable_3_int),
-    .phy_4_rx_prbs31_enable(qsfp_0_rx_prbs31_enable_3_int)
+    .phy_4_cfg_tx_prbs31_enable(qsfp_0_cfg_tx_prbs31_enable_3_int),
+    .phy_4_cfg_rx_prbs31_enable(qsfp_0_cfg_rx_prbs31_enable_3_int)
 );
 
 // QSFP1
@@ -1185,45 +1178,45 @@ wire                         qsfp_1_tx_clk_0_int;
 wire                         qsfp_1_tx_rst_0_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_txd_0_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_txc_0_int;
-wire                         qsfp_1_tx_prbs31_enable_0_int;
+wire                         qsfp_1_cfg_tx_prbs31_enable_0_int;
 wire                         qsfp_1_rx_clk_0_int;
 wire                         qsfp_1_rx_rst_0_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_rxd_0_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_rxc_0_int;
-wire                         qsfp_1_rx_prbs31_enable_0_int;
+wire                         qsfp_1_cfg_rx_prbs31_enable_0_int;
 wire [6:0]                   qsfp_1_rx_error_count_0_int;
 wire                         qsfp_1_tx_clk_1_int;
 wire                         qsfp_1_tx_rst_1_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_txd_1_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_txc_1_int;
-wire                         qsfp_1_tx_prbs31_enable_1_int;
+wire                         qsfp_1_cfg_tx_prbs31_enable_1_int;
 wire                         qsfp_1_rx_clk_1_int;
 wire                         qsfp_1_rx_rst_1_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_rxd_1_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_rxc_1_int;
-wire                         qsfp_1_rx_prbs31_enable_1_int;
+wire                         qsfp_1_cfg_rx_prbs31_enable_1_int;
 wire [6:0]                   qsfp_1_rx_error_count_1_int;
 wire                         qsfp_1_tx_clk_2_int;
 wire                         qsfp_1_tx_rst_2_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_txd_2_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_txc_2_int;
-wire                         qsfp_1_tx_prbs31_enable_2_int;
+wire                         qsfp_1_cfg_tx_prbs31_enable_2_int;
 wire                         qsfp_1_rx_clk_2_int;
 wire                         qsfp_1_rx_rst_2_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_rxd_2_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_rxc_2_int;
-wire                         qsfp_1_rx_prbs31_enable_2_int;
+wire                         qsfp_1_cfg_rx_prbs31_enable_2_int;
 wire [6:0]                   qsfp_1_rx_error_count_2_int;
 wire                         qsfp_1_tx_clk_3_int;
 wire                         qsfp_1_tx_rst_3_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_txd_3_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_txc_3_int;
-wire                         qsfp_1_tx_prbs31_enable_3_int;
+wire                         qsfp_1_cfg_tx_prbs31_enable_3_int;
 wire                         qsfp_1_rx_clk_3_int;
 wire                         qsfp_1_rx_rst_3_int;
 wire [XGMII_DATA_WIDTH-1:0]  qsfp_1_rxd_3_int;
 wire [XGMII_CTRL_WIDTH-1:0]  qsfp_1_rxc_3_int;
-wire                         qsfp_1_rx_prbs31_enable_3_int;
+wire                         qsfp_1_cfg_rx_prbs31_enable_3_int;
 wire [6:0]                   qsfp_1_rx_error_count_3_int;
 
 wire        qsfp_1_drp_clk = clk_125mhz_int;
@@ -1258,7 +1251,20 @@ qsfp_1_phy_quad_inst (
      * Common
      */
     .xcvr_gtpowergood_out(qsfp_1_gtpowergood),
-    .xcvr_ref_clk(qsfp_mgt_refclk),
+    .xcvr_gtrefclk00_in(qsfp_mgt_refclk),
+    .xcvr_qpll0pd_in(1'b0),
+    .xcvr_qpll0reset_in(1'b0),
+    .xcvr_qpll0pcierate_in(3'd0),
+    .xcvr_qpll0lock_out(),
+    .xcvr_qpll0clk_out(),
+    .xcvr_qpll0refclk_out(),
+    .xcvr_gtrefclk01_in(qsfp_mgt_refclk),
+    .xcvr_qpll1pd_in(1'b0),
+    .xcvr_qpll1reset_in(1'b0),
+    .xcvr_qpll1pcierate_in(3'd0),
+    .xcvr_qpll1lock_out(),
+    .xcvr_qpll1clk_out(),
+    .xcvr_qpll1refclk_out(),
 
     /*
      * DRP
@@ -1275,10 +1281,10 @@ qsfp_1_phy_quad_inst (
     /*
      * Serial data
      */
-    .xcvr_txp({qsfp_1_tx_3_p, qsfp_1_tx_2_p, qsfp_1_tx_1_p, qsfp_1_tx_0_p}),
-    .xcvr_txn({qsfp_1_tx_3_n, qsfp_1_tx_2_n, qsfp_1_tx_1_n, qsfp_1_tx_0_n}),
-    .xcvr_rxp({qsfp_1_rx_3_p, qsfp_1_rx_2_p, qsfp_1_rx_1_p, qsfp_1_rx_0_p}),
-    .xcvr_rxn({qsfp_1_rx_3_n, qsfp_1_rx_2_n, qsfp_1_rx_1_n, qsfp_1_rx_0_n}),
+    .xcvr_txp(qsfp_1_tx_p),
+    .xcvr_txn(qsfp_1_tx_n),
+    .xcvr_rxp(qsfp_1_rx_p),
+    .xcvr_rxn(qsfp_1_rx_n),
 
     /*
      * PHY connections
@@ -1298,8 +1304,8 @@ qsfp_1_phy_quad_inst (
     .phy_1_rx_block_lock(qsfp_1_rx_block_lock_0),
     .phy_1_rx_high_ber(),
     .phy_1_rx_status(qsfp_1_rx_status_0),
-    .phy_1_tx_prbs31_enable(qsfp_1_tx_prbs31_enable_0_int),
-    .phy_1_rx_prbs31_enable(qsfp_1_rx_prbs31_enable_0_int),
+    .phy_1_cfg_tx_prbs31_enable(qsfp_1_cfg_tx_prbs31_enable_0_int),
+    .phy_1_cfg_rx_prbs31_enable(qsfp_1_cfg_rx_prbs31_enable_0_int),
 
     .phy_2_tx_clk(qsfp_1_tx_clk_1_int),
     .phy_2_tx_rst(qsfp_1_tx_rst_1_int),
@@ -1316,8 +1322,8 @@ qsfp_1_phy_quad_inst (
     .phy_2_rx_block_lock(qsfp_1_rx_block_lock_1),
     .phy_2_rx_high_ber(),
     .phy_2_rx_status(qsfp_1_rx_status_1),
-    .phy_2_tx_prbs31_enable(qsfp_1_tx_prbs31_enable_1_int),
-    .phy_2_rx_prbs31_enable(qsfp_1_rx_prbs31_enable_1_int),
+    .phy_2_cfg_tx_prbs31_enable(qsfp_1_cfg_tx_prbs31_enable_1_int),
+    .phy_2_cfg_rx_prbs31_enable(qsfp_1_cfg_rx_prbs31_enable_1_int),
 
     .phy_3_tx_clk(qsfp_1_tx_clk_2_int),
     .phy_3_tx_rst(qsfp_1_tx_rst_2_int),
@@ -1334,8 +1340,8 @@ qsfp_1_phy_quad_inst (
     .phy_3_rx_block_lock(qsfp_1_rx_block_lock_2),
     .phy_3_rx_high_ber(),
     .phy_3_rx_status(qsfp_1_rx_status_2),
-    .phy_3_tx_prbs31_enable(qsfp_1_tx_prbs31_enable_2_int),
-    .phy_3_rx_prbs31_enable(qsfp_1_rx_prbs31_enable_2_int),
+    .phy_3_cfg_tx_prbs31_enable(qsfp_1_cfg_tx_prbs31_enable_2_int),
+    .phy_3_cfg_rx_prbs31_enable(qsfp_1_cfg_rx_prbs31_enable_2_int),
 
     .phy_4_tx_clk(qsfp_1_tx_clk_3_int),
     .phy_4_tx_rst(qsfp_1_tx_rst_3_int),
@@ -1352,8 +1358,8 @@ qsfp_1_phy_quad_inst (
     .phy_4_rx_block_lock(qsfp_1_rx_block_lock_3),
     .phy_4_rx_high_ber(),
     .phy_4_rx_status(qsfp_1_rx_status_3),
-    .phy_4_tx_prbs31_enable(qsfp_1_tx_prbs31_enable_3_int),
-    .phy_4_rx_prbs31_enable(qsfp_1_rx_prbs31_enable_3_int)
+    .phy_4_cfg_tx_prbs31_enable(qsfp_1_cfg_tx_prbs31_enable_3_int),
+    .phy_4_cfg_rx_prbs31_enable(qsfp_1_cfg_rx_prbs31_enable_3_int)
 );
 
 wire ptp_clk;
@@ -1584,7 +1590,6 @@ fpga_core #(
     .PTP_TS_WIDTH(PTP_TS_WIDTH),
     .PTP_CLOCK_PIPELINE(PTP_CLOCK_PIPELINE),
     .PTP_CLOCK_CDC_PIPELINE(PTP_CLOCK_CDC_PIPELINE),
-    .PTP_USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK),
     .PTP_PORT_CDC_PIPELINE(PTP_PORT_CDC_PIPELINE),
     .PTP_PEROUT_ENABLE(PTP_PEROUT_ENABLE),
     .PTP_PEROUT_COUNT(PTP_PEROUT_COUNT),
@@ -1620,6 +1625,11 @@ fpga_core #(
     .TX_CHECKSUM_ENABLE(TX_CHECKSUM_ENABLE),
     .RX_HASH_ENABLE(RX_HASH_ENABLE),
     .RX_CHECKSUM_ENABLE(RX_CHECKSUM_ENABLE),
+    .PFC_ENABLE(PFC_ENABLE),
+    .LFC_ENABLE(LFC_ENABLE),
+    .ENABLE_PADDING(ENABLE_PADDING),
+    .ENABLE_DIC(ENABLE_DIC),
+    .MIN_FRAME_LENGTH(MIN_FRAME_LENGTH),
     .TX_FIFO_DEPTH(TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH(RX_FIFO_DEPTH),
     .MAX_TX_SIZE(MAX_TX_SIZE),
@@ -1683,6 +1693,8 @@ fpga_core #(
     .AXIL_APP_CTRL_ADDR_WIDTH(AXIL_APP_CTRL_ADDR_WIDTH),
 
     // Ethernet interface configuration
+    .XGMII_DATA_WIDTH(XGMII_DATA_WIDTH),
+    .XGMII_CTRL_WIDTH(XGMII_CTRL_WIDTH),
     .AXIS_ETH_DATA_WIDTH(AXIS_ETH_DATA_WIDTH),
     .AXIS_ETH_KEEP_WIDTH(AXIS_ETH_KEEP_WIDTH),
     .AXIS_ETH_SYNC_DATA_WIDTH(AXIS_ETH_SYNC_DATA_WIDTH),
@@ -1814,48 +1826,48 @@ core_inst (
     .qsfp_0_tx_rst_0(qsfp_0_tx_rst_0_int),
     .qsfp_0_txd_0(qsfp_0_txd_0_int),
     .qsfp_0_txc_0(qsfp_0_txc_0_int),
-    .qsfp_0_tx_prbs31_enable_0(qsfp_0_tx_prbs31_enable_0_int),
+    .qsfp_0_cfg_tx_prbs31_enable_0(qsfp_0_cfg_tx_prbs31_enable_0_int),
     .qsfp_0_rx_clk_0(qsfp_0_rx_clk_0_int),
     .qsfp_0_rx_rst_0(qsfp_0_rx_rst_0_int),
     .qsfp_0_rxd_0(qsfp_0_rxd_0_int),
     .qsfp_0_rxc_0(qsfp_0_rxc_0_int),
-    .qsfp_0_rx_prbs31_enable_0(qsfp_0_rx_prbs31_enable_0_int),
+    .qsfp_0_cfg_rx_prbs31_enable_0(qsfp_0_cfg_rx_prbs31_enable_0_int),
     .qsfp_0_rx_error_count_0(qsfp_0_rx_error_count_0_int),
     .qsfp_0_rx_status_0(qsfp_0_rx_status_0),
     .qsfp_0_tx_clk_1(qsfp_0_tx_clk_1_int),
     .qsfp_0_tx_rst_1(qsfp_0_tx_rst_1_int),
     .qsfp_0_txd_1(qsfp_0_txd_1_int),
     .qsfp_0_txc_1(qsfp_0_txc_1_int),
-    .qsfp_0_tx_prbs31_enable_1(qsfp_0_tx_prbs31_enable_1_int),
+    .qsfp_0_cfg_tx_prbs31_enable_1(qsfp_0_cfg_tx_prbs31_enable_1_int),
     .qsfp_0_rx_clk_1(qsfp_0_rx_clk_1_int),
     .qsfp_0_rx_rst_1(qsfp_0_rx_rst_1_int),
     .qsfp_0_rxd_1(qsfp_0_rxd_1_int),
     .qsfp_0_rxc_1(qsfp_0_rxc_1_int),
-    .qsfp_0_rx_prbs31_enable_1(qsfp_0_rx_prbs31_enable_1_int),
+    .qsfp_0_cfg_rx_prbs31_enable_1(qsfp_0_cfg_rx_prbs31_enable_1_int),
     .qsfp_0_rx_error_count_1(qsfp_0_rx_error_count_1_int),
     .qsfp_0_rx_status_1(qsfp_0_rx_status_1),
     .qsfp_0_tx_clk_2(qsfp_0_tx_clk_2_int),
     .qsfp_0_tx_rst_2(qsfp_0_tx_rst_2_int),
     .qsfp_0_txd_2(qsfp_0_txd_2_int),
     .qsfp_0_txc_2(qsfp_0_txc_2_int),
-    .qsfp_0_tx_prbs31_enable_2(qsfp_0_tx_prbs31_enable_2_int),
+    .qsfp_0_cfg_tx_prbs31_enable_2(qsfp_0_cfg_tx_prbs31_enable_2_int),
     .qsfp_0_rx_clk_2(qsfp_0_rx_clk_2_int),
     .qsfp_0_rx_rst_2(qsfp_0_rx_rst_2_int),
     .qsfp_0_rxd_2(qsfp_0_rxd_2_int),
     .qsfp_0_rxc_2(qsfp_0_rxc_2_int),
-    .qsfp_0_rx_prbs31_enable_2(qsfp_0_rx_prbs31_enable_2_int),
+    .qsfp_0_cfg_rx_prbs31_enable_2(qsfp_0_cfg_rx_prbs31_enable_2_int),
     .qsfp_0_rx_error_count_2(qsfp_0_rx_error_count_2_int),
     .qsfp_0_rx_status_2(qsfp_0_rx_status_2),
     .qsfp_0_tx_clk_3(qsfp_0_tx_clk_3_int),
     .qsfp_0_tx_rst_3(qsfp_0_tx_rst_3_int),
     .qsfp_0_txd_3(qsfp_0_txd_3_int),
     .qsfp_0_txc_3(qsfp_0_txc_3_int),
-    .qsfp_0_tx_prbs31_enable_3(qsfp_0_tx_prbs31_enable_3_int),
+    .qsfp_0_cfg_tx_prbs31_enable_3(qsfp_0_cfg_tx_prbs31_enable_3_int),
     .qsfp_0_rx_clk_3(qsfp_0_rx_clk_3_int),
     .qsfp_0_rx_rst_3(qsfp_0_rx_rst_3_int),
     .qsfp_0_rxd_3(qsfp_0_rxd_3_int),
     .qsfp_0_rxc_3(qsfp_0_rxc_3_int),
-    .qsfp_0_rx_prbs31_enable_3(qsfp_0_rx_prbs31_enable_3_int),
+    .qsfp_0_cfg_rx_prbs31_enable_3(qsfp_0_cfg_rx_prbs31_enable_3_int),
     .qsfp_0_rx_error_count_3(qsfp_0_rx_error_count_3_int),
     .qsfp_0_rx_status_3(qsfp_0_rx_status_3),
 
@@ -1885,48 +1897,48 @@ core_inst (
     .qsfp_1_tx_rst_0(qsfp_1_tx_rst_0_int),
     .qsfp_1_txd_0(qsfp_1_txd_0_int),
     .qsfp_1_txc_0(qsfp_1_txc_0_int),
-    .qsfp_1_tx_prbs31_enable_0(qsfp_1_tx_prbs31_enable_0_int),
+    .qsfp_1_cfg_tx_prbs31_enable_0(qsfp_1_cfg_tx_prbs31_enable_0_int),
     .qsfp_1_rx_clk_0(qsfp_1_rx_clk_0_int),
     .qsfp_1_rx_rst_0(qsfp_1_rx_rst_0_int),
     .qsfp_1_rxd_0(qsfp_1_rxd_0_int),
     .qsfp_1_rxc_0(qsfp_1_rxc_0_int),
-    .qsfp_1_rx_prbs31_enable_0(qsfp_1_rx_prbs31_enable_0_int),
+    .qsfp_1_cfg_rx_prbs31_enable_0(qsfp_1_cfg_rx_prbs31_enable_0_int),
     .qsfp_1_rx_error_count_0(qsfp_1_rx_error_count_0_int),
     .qsfp_1_rx_status_0(qsfp_1_rx_status_0),
     .qsfp_1_tx_clk_1(qsfp_1_tx_clk_1_int),
     .qsfp_1_tx_rst_1(qsfp_1_tx_rst_1_int),
     .qsfp_1_txd_1(qsfp_1_txd_1_int),
     .qsfp_1_txc_1(qsfp_1_txc_1_int),
-    .qsfp_1_tx_prbs31_enable_1(qsfp_1_tx_prbs31_enable_1_int),
+    .qsfp_1_cfg_tx_prbs31_enable_1(qsfp_1_cfg_tx_prbs31_enable_1_int),
     .qsfp_1_rx_clk_1(qsfp_1_rx_clk_1_int),
     .qsfp_1_rx_rst_1(qsfp_1_rx_rst_1_int),
     .qsfp_1_rxd_1(qsfp_1_rxd_1_int),
     .qsfp_1_rxc_1(qsfp_1_rxc_1_int),
-    .qsfp_1_rx_prbs31_enable_1(qsfp_1_rx_prbs31_enable_1_int),
+    .qsfp_1_cfg_rx_prbs31_enable_1(qsfp_1_cfg_rx_prbs31_enable_1_int),
     .qsfp_1_rx_error_count_1(qsfp_1_rx_error_count_1_int),
     .qsfp_1_rx_status_1(qsfp_1_rx_status_1),
     .qsfp_1_tx_clk_2(qsfp_1_tx_clk_2_int),
     .qsfp_1_tx_rst_2(qsfp_1_tx_rst_2_int),
     .qsfp_1_txd_2(qsfp_1_txd_2_int),
     .qsfp_1_txc_2(qsfp_1_txc_2_int),
-    .qsfp_1_tx_prbs31_enable_2(qsfp_1_tx_prbs31_enable_2_int),
+    .qsfp_1_cfg_tx_prbs31_enable_2(qsfp_1_cfg_tx_prbs31_enable_2_int),
     .qsfp_1_rx_clk_2(qsfp_1_rx_clk_2_int),
     .qsfp_1_rx_rst_2(qsfp_1_rx_rst_2_int),
     .qsfp_1_rxd_2(qsfp_1_rxd_2_int),
     .qsfp_1_rxc_2(qsfp_1_rxc_2_int),
-    .qsfp_1_rx_prbs31_enable_2(qsfp_1_rx_prbs31_enable_2_int),
+    .qsfp_1_cfg_rx_prbs31_enable_2(qsfp_1_cfg_rx_prbs31_enable_2_int),
     .qsfp_1_rx_error_count_2(qsfp_1_rx_error_count_2_int),
     .qsfp_1_rx_status_2(qsfp_1_rx_status_2),
     .qsfp_1_tx_clk_3(qsfp_1_tx_clk_3_int),
     .qsfp_1_tx_rst_3(qsfp_1_tx_rst_3_int),
     .qsfp_1_txd_3(qsfp_1_txd_3_int),
     .qsfp_1_txc_3(qsfp_1_txc_3_int),
-    .qsfp_1_tx_prbs31_enable_3(qsfp_1_tx_prbs31_enable_3_int),
+    .qsfp_1_cfg_tx_prbs31_enable_3(qsfp_1_cfg_tx_prbs31_enable_3_int),
     .qsfp_1_rx_clk_3(qsfp_1_rx_clk_3_int),
     .qsfp_1_rx_rst_3(qsfp_1_rx_rst_3_int),
     .qsfp_1_rxd_3(qsfp_1_rxd_3_int),
     .qsfp_1_rxc_3(qsfp_1_rxc_3_int),
-    .qsfp_1_rx_prbs31_enable_3(qsfp_1_rx_prbs31_enable_3_int),
+    .qsfp_1_cfg_rx_prbs31_enable_3(qsfp_1_cfg_rx_prbs31_enable_3_int),
     .qsfp_1_rx_error_count_3(qsfp_1_rx_error_count_3_int),
     .qsfp_1_rx_status_3(qsfp_1_rx_status_3),
 

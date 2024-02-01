@@ -20,6 +20,7 @@
 #include <linux/net_tstamp.h>
 #include <linux/ptp_clock_kernel.h>
 #include <linux/timer.h>
+#include <net/devlink.h>
 
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
@@ -151,8 +152,7 @@ struct mqnic_dev {
 	struct mqnic_reg_block *clk_info_rb;
 	struct mqnic_reg_block *phc_rb;
 
-	int dev_port_max;
-	int dev_port_limit;
+	int phys_port_max;
 
 	u32 fpga_id;
 	u32 fw_id;
@@ -182,6 +182,8 @@ struct mqnic_dev {
 	u32 if_count;
 	u32 if_stride;
 	u32 if_csr_offset;
+
+	char build_date_str[32];
 
 	struct mqnic_if *interface[MQNIC_MAX_IF];
 
@@ -347,8 +349,11 @@ struct mqnic_port {
 	struct mqnic_reg_block *port_ctrl_rb;
 
 	int index;
+	int phys_index;
 
 	u32 port_features;
+
+	struct devlink_port dl_port;
 };
 
 struct mqnic_sched_block {
@@ -378,14 +383,12 @@ struct mqnic_if {
 
 	int index;
 
-	int dev_port_base;
-	int dev_port_max;
-	int dev_port_limit;
-
 	u32 if_features;
 
 	u32 max_tx_mtu;
 	u32 max_rx_mtu;
+	u32 tx_fifo_depth;
+	u32 rx_fifo_depth;
 
 	struct mqnic_res *eq_res;
 	struct mqnic_res *cq_res;
@@ -419,6 +422,7 @@ struct mqnic_if {
 struct mqnic_priv {
 	struct device *dev;
 	struct net_device *ndev;
+	struct devlink_port *dl_port;
 	struct mqnic_dev *mdev;
 	struct mqnic_if *interface;
 
@@ -445,8 +449,8 @@ struct mqnic_priv {
 	struct rw_semaphore rxq_table_sem;
 	struct radix_tree_root rxq_table;
 
-	u32 sched_block_count;
-	struct mqnic_sched_block *sched_block[MQNIC_MAX_PORTS];
+	struct mqnic_sched_block *sched_block;
+	struct mqnic_port *port;
 
 	u32 max_desc_block_size;
 
@@ -459,6 +463,10 @@ struct mqnic_priv {
 };
 
 // mqnic_main.c
+
+// mqnic_devlink.c
+struct devlink *mqnic_devlink_alloc(struct device *dev);
+void mqnic_devlink_free(struct devlink *devlink);
 
 // mqnic_res.c
 struct mqnic_res *mqnic_create_res(unsigned int count, u8 __iomem *base, unsigned int stride);
@@ -497,17 +505,26 @@ void mqnic_interface_set_rx_queue_map_indir_table(struct mqnic_if *interface, in
 
 // mqnic_port.c
 struct mqnic_port *mqnic_create_port(struct mqnic_if *interface, int index,
-		struct mqnic_reg_block *port_rb);
+		int phys_index, struct mqnic_reg_block *port_rb);
 void mqnic_destroy_port(struct mqnic_port *port);
-u32 mqnic_port_get_tx_status(struct mqnic_port *port);
-u32 mqnic_port_get_rx_status(struct mqnic_port *port);
+u32 mqnic_port_get_tx_ctrl(struct mqnic_port *port);
+void mqnic_port_set_tx_ctrl(struct mqnic_port *port, u32 val);
+u32 mqnic_port_get_rx_ctrl(struct mqnic_port *port);
+void mqnic_port_set_rx_ctrl(struct mqnic_port *port, u32 val);
+u32 mqnic_port_get_fc_ctrl(struct mqnic_port *port);
+void mqnic_port_set_fc_ctrl(struct mqnic_port *port, u32 val);
+u32 mqnic_port_get_lfc_ctrl(struct mqnic_port *port);
+void mqnic_port_set_lfc_ctrl(struct mqnic_port *port, u32 val);
+u32 mqnic_port_get_pfc_ctrl(struct mqnic_port *port, int index);
+void mqnic_port_set_pfc_ctrl(struct mqnic_port *port, int index, u32 val);
 
 // mqnic_netdev.c
 int mqnic_start_port(struct net_device *ndev);
 void mqnic_stop_port(struct net_device *ndev);
 int mqnic_update_indir_table(struct net_device *ndev);
 void mqnic_update_stats(struct net_device *ndev);
-struct net_device *mqnic_create_netdev(struct mqnic_if *interface, int index, int dev_port);
+struct net_device *mqnic_create_netdev(struct mqnic_if *interface, int index,
+		struct mqnic_port *port, struct mqnic_sched_block *sched_block);
 void mqnic_destroy_netdev(struct net_device *ndev);
 
 // mqnic_sched_block.c

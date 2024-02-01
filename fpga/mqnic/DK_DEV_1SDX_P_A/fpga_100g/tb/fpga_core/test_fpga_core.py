@@ -245,52 +245,41 @@ class TB(object):
 
         self.driver = mqnic.Driver()
 
-        self.dev.functions[0].configure_bar(0, 2**len(dut.core_inst.core_pcie_inst.axil_ctrl_araddr), ext=True, prefetch=True)
-        if hasattr(dut.core_inst.core_pcie_inst, 'pcie_app_ctrl'):
-            self.dev.functions[0].configure_bar(2, 2**len(dut.core_inst.core_pcie_inst.axil_app_ctrl_araddr), ext=True, prefetch=True)
+        self.dev.functions[0].configure_bar(0, 2**len(dut.uut.core_inst.core_pcie_inst.axil_ctrl_araddr), ext=True, prefetch=True)
+        if hasattr(dut.uut.core_inst.core_pcie_inst, 'pcie_app_ctrl'):
+            self.dev.functions[0].configure_bar(2, 2**len(dut.uut.core_inst.core_pcie_inst.axil_app_ctrl_araddr), ext=True, prefetch=True)
 
         cocotb.start_soon(Clock(dut.ptp_clk, 4.964, units="ns").start())
         dut.ptp_rst.setimmediatevalue(0)
         cocotb.start_soon(Clock(dut.ptp_sample_clk, 10, units="ns").start())
 
         # Ethernet
-        cocotb.start_soon(Clock(dut.qsfp1_mac_clk, 2.482, units="ns").start())
+        self.qsfp_mac = []
 
-        self.qsfp1_mac = EthMac(
-            tx_clk=dut.qsfp1_mac_clk,
-            tx_rst=dut.qsfp1_mac_rst,
-            tx_bus=AxiStreamBus.from_prefix(dut, "qsfp1_mac_tx_axis"),
-            tx_ptp_time=dut.qsfp1_mac_ptp_time,
-            tx_ptp_ts=dut.qsfp1_mac_tx_ptp_ts,
-            tx_ptp_ts_tag=dut.qsfp1_mac_tx_ptp_ts_tag,
-            tx_ptp_ts_valid=dut.qsfp1_mac_tx_ptp_ts_valid,
-            rx_clk=dut.qsfp1_mac_clk,
-            rx_rst=dut.qsfp1_mac_rst,
-            rx_bus=AxiStreamBus.from_prefix(dut, "qsfp1_mac_rx_axis"),
-            rx_ptp_time=dut.qsfp1_mac_ptp_time,
-            ifg=12, speed=100e9
-        )
+        for ch in self.dut.ch:
+            cocotb.start_soon(Clock(ch.ch_mac_tx_clk, 2.482, units="ns").start())
+            cocotb.start_soon(Clock(ch.ch_mac_rx_clk, 2.482, units="ns").start())
 
-        cocotb.start_soon(Clock(dut.qsfp2_mac_clk, 2.482, units="ns").start())
+            mac = EthMac(
+                tx_clk=ch.ch_mac_tx_clk,
+                tx_rst=ch.ch_mac_tx_rst,
+                tx_bus=AxiStreamBus.from_prefix(ch, "ch_mac_tx_axis"),
+                tx_ptp_time=ch.ch_mac_tx_ptp_time,
+                tx_ptp_ts=ch.ch_mac_tx_ptp_ts,
+                tx_ptp_ts_tag=ch.ch_mac_tx_ptp_ts_tag,
+                tx_ptp_ts_valid=ch.ch_mac_tx_ptp_ts_valid,
+                rx_clk=ch.ch_mac_rx_clk,
+                rx_rst=ch.ch_mac_rx_rst,
+                rx_bus=AxiStreamBus.from_prefix(ch, "ch_mac_rx_axis"),
+                rx_ptp_time=ch.ch_mac_rx_ptp_time,
+                ifg=12, speed=100e9
+            )
 
-        self.qsfp2_mac = EthMac(
-            tx_clk=dut.qsfp2_mac_clk,
-            tx_rst=dut.qsfp2_mac_rst,
-            tx_bus=AxiStreamBus.from_prefix(dut, "qsfp2_mac_tx_axis"),
-            tx_ptp_time=dut.qsfp2_mac_ptp_time,
-            tx_ptp_ts=dut.qsfp2_mac_tx_ptp_ts,
-            tx_ptp_ts_tag=dut.qsfp2_mac_tx_ptp_ts_tag,
-            tx_ptp_ts_valid=dut.qsfp2_mac_tx_ptp_ts_valid,
-            rx_clk=dut.qsfp2_mac_clk,
-            rx_rst=dut.qsfp2_mac_rst,
-            rx_bus=AxiStreamBus.from_prefix(dut, "qsfp2_mac_rx_axis"),
-            rx_ptp_time=dut.qsfp2_mac_ptp_time,
-            ifg=12, speed=100e9
-        )
+            ch.ch_mac_rx_status.setimmediatevalue(1)
+            ch.ch_mac_rx_lfc_req.setimmediatevalue(0)
+            ch.ch_mac_rx_pfc_req.setimmediatevalue(0)
 
-        dut.qsfp1_mac_rx_status.setimmediatevalue(1)
-
-        dut.qsfp2_mac_rx_status.setimmediatevalue(1)
+            self.qsfp_mac.append(mac)
 
         dut.user_pb.setimmediatevalue(0)
 
@@ -303,15 +292,17 @@ class TB(object):
     async def init(self):
 
         self.dut.ptp_rst.setimmediatevalue(0)
-        self.dut.qsfp1_mac_rst.setimmediatevalue(0)
-        self.dut.qsfp2_mac_rst.setimmediatevalue(0)
+        for ch in self.dut.ch:
+            ch.ch_mac_tx_rst.setimmediatevalue(0)
+            ch.ch_mac_rx_rst.setimmediatevalue(0)
 
         await RisingEdge(self.dut.clk_250mhz)
         await RisingEdge(self.dut.clk_250mhz)
 
         self.dut.ptp_rst.setimmediatevalue(1)
-        self.dut.qsfp1_mac_rst.setimmediatevalue(1)
-        self.dut.qsfp2_mac_rst.setimmediatevalue(1)
+        for ch in self.dut.ch:
+            ch.ch_mac_tx_rst.setimmediatevalue(1)
+            ch.ch_mac_rx_rst.setimmediatevalue(1)
 
         await FallingEdge(self.dut.rst_250mhz)
         await Timer(100, 'ns')
@@ -320,8 +311,9 @@ class TB(object):
         await RisingEdge(self.dut.clk_250mhz)
 
         self.dut.ptp_rst.setimmediatevalue(0)
-        self.dut.qsfp1_mac_rst.setimmediatevalue(0)
-        self.dut.qsfp2_mac_rst.setimmediatevalue(0)
+        for ch in self.dut.ch:
+            ch.ch_mac_tx_rst.setimmediatevalue(0)
+            ch.ch_mac_rx_rst.setimmediatevalue(0)
 
         await self.rc.enumerate()
 
@@ -330,16 +322,15 @@ class TB(object):
             await RisingEdge(self.dut.clk_250mhz)
 
             if self.loopback_enable:
-                if not self.qsfp1_mac.tx.empty():
-                    await self.qsfp1_mac.rx.send(await self.qsfp1_mac.tx.recv())
-                if not self.qsfp2_mac.tx.empty():
-                    await self.qsfp2_mac.rx.send(await self.qsfp2_mac.tx.recv())
+                for mac in self.qsfp_mac:
+                    if not mac.tx.empty():
+                        await mac.rx.send(await mac.tx.recv())
 
 
 @cocotb.test()
 async def run_test_nic(dut):
 
-    tb = TB(dut, msix_count=2**len(dut.core_inst.core_pcie_inst.irq_index))
+    tb = TB(dut, msix_count=2**len(dut.uut.core_inst.core_pcie_inst.irq_index))
 
     await tb.init()
 
@@ -364,10 +355,10 @@ async def run_test_nic(dut):
 
     await tb.driver.interfaces[0].start_xmit(data, 0)
 
-    pkt = await tb.qsfp1_mac.tx.recv()
+    pkt = await tb.qsfp_mac[0].tx.recv()
     tb.log.info("Packet: %s", pkt)
 
-    await tb.qsfp1_mac.rx.send(pkt)
+    await tb.qsfp_mac[0].rx.send(pkt)
 
     pkt = await tb.driver.interfaces[0].recv()
 
@@ -376,10 +367,10 @@ async def run_test_nic(dut):
 
     # await tb.driver.interfaces[1].start_xmit(data, 0)
 
-    # pkt = await tb.qsfp2_mac.tx.recv()
+    # pkt = await tb.qsfp_mac[1].tx.recv()
     # tb.log.info("Packet: %s", pkt)
 
-    # await tb.qsfp2_mac.rx.send(pkt)
+    # await tb.qsfp_mac[1].rx.send(pkt)
 
     # pkt = await tb.driver.interfaces[1].recv()
 
@@ -399,10 +390,10 @@ async def run_test_nic(dut):
 
     await tb.driver.interfaces[0].start_xmit(test_pkt2.build(), 0, 34, 6)
 
-    pkt = await tb.qsfp1_mac.tx.recv()
+    pkt = await tb.qsfp_mac[0].tx.recv()
     tb.log.info("Packet: %s", pkt)
 
-    await tb.qsfp1_mac.rx.send(pkt)
+    await tb.qsfp_mac[0].rx.send(pkt)
 
     pkt = await tb.driver.interfaces[0].recv()
 
@@ -547,9 +538,10 @@ pcie_rtl_dir = os.path.abspath(os.path.join(lib_dir, 'pcie', 'rtl'))
 def test_fpga_core(request):
     dut = "fpga_core"
     module = os.path.splitext(os.path.basename(__file__))[0]
-    toplevel = dut
+    toplevel = f"test_{dut}"
 
     verilog_sources = [
+        os.path.join(tests_dir, f"{toplevel}.v"),
         os.path.join(rtl_dir, f"{dut}.v"),
         os.path.join(rtl_dir, "common", "mqnic_core_pcie_ptile.v"),
         os.path.join(rtl_dir, "common", "mqnic_core_pcie.v"),
@@ -596,8 +588,8 @@ def test_fpga_core(request):
         os.path.join(rtl_dir, "common", "tdma_ber.v"),
         os.path.join(rtl_dir, "common", "tdma_ber_ch.v"),
         os.path.join(eth_rtl_dir, "lfsr.v"),
-        os.path.join(eth_rtl_dir, "ptp_clock.v"),
-        os.path.join(eth_rtl_dir, "ptp_clock_cdc.v"),
+        os.path.join(eth_rtl_dir, "ptp_td_phc.v"),
+        os.path.join(eth_rtl_dir, "ptp_td_leaf.v"),
         os.path.join(eth_rtl_dir, "ptp_perout.v"),
         os.path.join(axi_rtl_dir, "axil_interconnect.v"),
         os.path.join(axi_rtl_dir, "axil_crossbar.v"),
@@ -667,7 +659,6 @@ def test_fpga_core(request):
     parameters['PTP_CLK_PERIOD_NS_DENOM'] = 825
     parameters['PTP_CLOCK_PIPELINE'] = 0
     parameters['PTP_CLOCK_CDC_PIPELINE'] = 0
-    parameters['PTP_USE_SAMPLE_CLOCK'] = 1
     parameters['PTP_PORT_CDC_PIPELINE'] = 0
     parameters['PTP_PEROUT_ENABLE'] = 1
     parameters['PTP_PEROUT_COUNT'] = 1
@@ -702,6 +693,8 @@ def test_fpga_core(request):
     parameters['TX_CHECKSUM_ENABLE'] = 1
     parameters['RX_HASH_ENABLE'] = 1
     parameters['RX_CHECKSUM_ENABLE'] = 1
+    parameters['LFC_ENABLE'] = 1
+    parameters['PFC_ENABLE'] = parameters['LFC_ENABLE']
     parameters['TX_FIFO_DEPTH'] = 32768
     parameters['RX_FIFO_DEPTH'] = 131072
     parameters['MAX_TX_SIZE'] = 9214

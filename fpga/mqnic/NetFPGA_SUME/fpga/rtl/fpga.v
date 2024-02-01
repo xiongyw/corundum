@@ -71,6 +71,11 @@ module fpga #
     parameter TX_CHECKSUM_ENABLE = 1,
     parameter RX_HASH_ENABLE = 1,
     parameter RX_CHECKSUM_ENABLE = 1,
+    parameter LFC_ENABLE = PFC_ENABLE,
+    parameter PFC_ENABLE = 1,
+    parameter ENABLE_PADDING = 1,
+    parameter ENABLE_DIC = 1,
+    parameter MIN_FRAME_LENGTH = 64,
     parameter TX_FIFO_DEPTH = 32768,
     parameter RX_FIFO_DEPTH = 32768,
     parameter MAX_TX_SIZE = 9214,
@@ -210,7 +215,6 @@ module fpga #
 parameter PTP_CLK_PERIOD_NS_NUM = 32;
 parameter PTP_CLK_PERIOD_NS_DENOM = 5;
 parameter PTP_TS_WIDTH = 96;
-parameter PTP_USE_SAMPLE_CLOCK = 1;
 parameter IF_PTP_PERIOD_NS = 6'h6;
 parameter IF_PTP_PERIOD_FNS = 16'h6666;
 
@@ -923,7 +927,7 @@ pcie3_7x_inst (
     .cfg_ds_device_number(5'd0),
     .cfg_ds_function_number(3'd0),
 
-    .cfg_subsys_vend_id(16'h1234),
+    .cfg_subsys_vend_id(BOARD_ID >> 16),
 
     .sys_clk(pcie_sys_clk),
     .sys_reset(!pcie_reset_n)
@@ -1293,7 +1297,6 @@ fpga_core #(
     .PTP_TS_WIDTH(PTP_TS_WIDTH),
     .PTP_CLOCK_PIPELINE(PTP_CLOCK_PIPELINE),
     .PTP_CLOCK_CDC_PIPELINE(PTP_CLOCK_CDC_PIPELINE),
-    .PTP_USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK),
     .PTP_PORT_CDC_PIPELINE(PTP_PORT_CDC_PIPELINE),
     .PTP_PEROUT_ENABLE(PTP_PEROUT_ENABLE),
     .PTP_PEROUT_COUNT(PTP_PEROUT_COUNT),
@@ -1329,6 +1332,11 @@ fpga_core #(
     .TX_CHECKSUM_ENABLE(TX_CHECKSUM_ENABLE),
     .RX_HASH_ENABLE(RX_HASH_ENABLE),
     .RX_CHECKSUM_ENABLE(RX_CHECKSUM_ENABLE),
+    .PFC_ENABLE(PFC_ENABLE),
+    .LFC_ENABLE(LFC_ENABLE),
+    .ENABLE_PADDING(ENABLE_PADDING),
+    .ENABLE_DIC(ENABLE_DIC),
+    .MIN_FRAME_LENGTH(MIN_FRAME_LENGTH),
     .TX_FIFO_DEPTH(TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH(RX_FIFO_DEPTH),
     .MAX_TX_SIZE(MAX_TX_SIZE),
@@ -1382,6 +1390,8 @@ fpga_core #(
     .AXIL_APP_CTRL_ADDR_WIDTH(AXIL_APP_CTRL_ADDR_WIDTH),
 
     // Ethernet interface configuration
+    .XGMII_DATA_WIDTH(XGMII_DATA_WIDTH),
+    .XGMII_CTRL_WIDTH(XGMII_CTRL_WIDTH),
     .AXIS_ETH_DATA_WIDTH(AXIS_ETH_DATA_WIDTH),
     .AXIS_ETH_KEEP_WIDTH(AXIS_ETH_KEEP_WIDTH),
     .AXIS_ETH_SYNC_DATA_WIDTH(AXIS_ETH_SYNC_DATA_WIDTH),

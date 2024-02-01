@@ -60,10 +60,11 @@ dict set params TDMA_BER_ENABLE "0"
 # Transceiver configuration
 set eth_xcvr_freerun_freq {125}
 set eth_xcvr_line_rate {10.3125}
-set eth_xcvr_sec_line_rate {0}
 set eth_xcvr_refclk_freq {322.265625}
+set eth_xcvr_sec_line_rate {0}
+set eth_xcvr_sec_refclk_freq $eth_xcvr_refclk_freq
 set eth_xcvr_qpll_fracn [expr {int(fmod($eth_xcvr_line_rate*1000/2 / $eth_xcvr_refclk_freq, 1)*pow(2, 24))}]
-set eth_xcvr_sec_qpll_fracn [expr {int(fmod($eth_xcvr_sec_line_rate*1000/2 / $eth_xcvr_refclk_freq, 1)*pow(2, 24))}]
+set eth_xcvr_sec_qpll_fracn [expr {int(fmod($eth_xcvr_sec_line_rate*1000/2 / $eth_xcvr_sec_refclk_freq, 1)*pow(2, 24))}]
 set eth_xcvr_rx_eq_mode {DFE}
 
 # Structural configuration
@@ -113,8 +114,13 @@ dict set params TX_CPL_FIFO_DEPTH "32"
 dict set params TX_CHECKSUM_ENABLE "1"
 dict set params RX_HASH_ENABLE "1"
 dict set params RX_CHECKSUM_ENABLE "1"
+dict set params PFC_ENABLE "1"
+dict set params LFC_ENABLE [dict get $params PFC_ENABLE]
+dict set params ENABLE_PADDING "1"
+dict set params ENABLE_DIC "1"
+dict set params MIN_FRAME_LENGTH "64"
 dict set params TX_FIFO_DEPTH "32768"
-dict set params RX_FIFO_DEPTH "32768"
+dict set params RX_FIFO_DEPTH "65536"
 dict set params MAX_TX_SIZE "9214"
 dict set params MAX_RX_SIZE "9214"
 dict set params TX_RAM_SIZE "32768"
@@ -266,7 +272,7 @@ if {$eth_xcvr_sec_line_rate != 0} {
     dict set xcvr_config CONFIG.SECONDARY_QPLL_ENABLE true
     dict set xcvr_config CONFIG.SECONDARY_QPLL_FRACN_NUMERATOR $eth_xcvr_sec_qpll_fracn
     dict set xcvr_config CONFIG.SECONDARY_QPLL_LINE_RATE $eth_xcvr_sec_line_rate
-    dict set xcvr_config CONFIG.SECONDARY_QPLL_REFCLK_FREQUENCY $eth_xcvr_refclk_freq
+    dict set xcvr_config CONFIG.SECONDARY_QPLL_REFCLK_FREQUENCY $eth_xcvr_sec_refclk_freq
 } else {
     dict set xcvr_config CONFIG.SECONDARY_QPLL_ENABLE false
 }

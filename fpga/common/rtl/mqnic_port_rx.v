@@ -19,6 +19,9 @@ module mqnic_port_rx #
 
     // Interface configuration
     parameter PTP_TS_ENABLE = 1,
+    parameter PFC_ENABLE = 0,
+    parameter LFC_ENABLE = PFC_ENABLE,
+    parameter MAC_CTRL_ENABLE = 0,
     parameter MAX_RX_SIZE = 9214,
 
     // Application block configuration
@@ -95,7 +98,21 @@ module mqnic_port_rx #
     input  wire                                s_axis_rx_tvalid,
     output wire                                s_axis_rx_tready,
     input  wire                                s_axis_rx_tlast,
-    input  wire [AXIS_RX_USER_WIDTH-1:0]       s_axis_rx_tuser
+    input  wire [AXIS_RX_USER_WIDTH-1:0]       s_axis_rx_tuser,
+
+    /*
+     * Flow control
+     */
+    input  wire                                rx_lfc_en,
+    output wire                                rx_lfc_req,
+    input  wire                                rx_lfc_ack,
+    input  wire [7:0]                          rx_pfc_en,
+    output wire [7:0]                          rx_pfc_req,
+    input  wire [7:0]                          rx_pfc_ack,
+    input  wire [9:0]                          rx_fc_quanta_step,
+    input  wire                                rx_fc_quanta_clk_en,
+    input  wire                                fifo_pause_req,
+    output wire                                fifo_pause_ack
 );
 
 generate
@@ -137,6 +154,12 @@ wire axis_if_rx_tlast;
 wire [AXIS_RX_USER_WIDTH-1:0] axis_if_rx_tuser;
 
 mqnic_l2_ingress #(
+    // Interface configuration
+    .PFC_ENABLE(PFC_ENABLE),
+    .LFC_ENABLE(LFC_ENABLE),
+    .MAC_CTRL_ENABLE(MAC_CTRL_ENABLE),
+
+    // Streaming interface configuration
     .AXIS_DATA_WIDTH(AXIS_DATA_WIDTH),
     .AXIS_KEEP_WIDTH(AXIS_KEEP_WIDTH),
     .AXIS_USER_WIDTH(AXIS_RX_USER_WIDTH),
@@ -164,7 +187,19 @@ mqnic_l2_ingress_inst (
     .m_axis_tvalid(axis_rx_l2_tvalid),
     .m_axis_tready(axis_rx_l2_tready),
     .m_axis_tlast(axis_rx_l2_tlast),
-    .m_axis_tuser(axis_rx_l2_tuser)
+    .m_axis_tuser(axis_rx_l2_tuser),
+
+    /*
+     * Flow control
+     */
+    .rx_lfc_en(rx_lfc_en),
+    .rx_lfc_req(rx_lfc_req),
+    .rx_lfc_ack(rx_lfc_ack),
+    .rx_pfc_en(rx_pfc_en),
+    .rx_pfc_req(rx_pfc_req),
+    .rx_pfc_ack(rx_pfc_ack),
+    .rx_fc_quanta_step(rx_fc_quanta_step),
+    .rx_fc_quanta_clk_en(rx_fc_quanta_clk_en)
 );
 
 if (APP_AXIS_DIRECT_ENABLE) begin
@@ -203,7 +238,7 @@ end else begin
 end
 
 axis_async_fifo_adapter #(
-    .DEPTH(MAX_RX_SIZE),
+    .DEPTH(AXIS_SYNC_KEEP_WIDTH*32),
     .S_DATA_WIDTH(AXIS_DATA_WIDTH),
     .S_KEEP_ENABLE(AXIS_KEEP_WIDTH > 1),
     .S_KEEP_WIDTH(AXIS_KEEP_WIDTH),
@@ -214,11 +249,16 @@ axis_async_fifo_adapter #(
     .DEST_ENABLE(0),
     .USER_ENABLE(1),
     .USER_WIDTH(AXIS_RX_USER_WIDTH),
-    .FRAME_FIFO(1),
+    .RAM_PIPELINE(0),
+    .FRAME_FIFO(0),
     .USER_BAD_FRAME_VALUE(1'b1),
     .USER_BAD_FRAME_MASK(1'b1),
-    .DROP_BAD_FRAME(1),
-    .DROP_WHEN_FULL(!AXIS_RX_USE_READY)
+    .DROP_OVERSIZE_FRAME(0),
+    .DROP_BAD_FRAME(0),
+    .DROP_WHEN_FULL(0),
+    .MARK_WHEN_FULL(!AXIS_RX_USE_READY),
+    .PAUSE_ENABLE(1),
+    .FRAME_PAUSE(1)
 )
 rx_async_fifo_inst (
     // AXI input
@@ -245,10 +285,20 @@ rx_async_fifo_inst (
     .m_axis_tdest(),
     .m_axis_tuser(axis_rx_async_fifo_tuser),
 
+    // Pause
+    .s_pause_req(1'b0),
+    .s_pause_ack(),
+    .m_pause_req(fifo_pause_req),
+    .m_pause_ack(fifo_pause_ack),
+
     // Status
+    .s_status_depth(),
+    .s_status_depth_commit(),
     .s_status_overflow(),
     .s_status_bad_frame(),
     .s_status_good_frame(),
+    .m_status_depth(),
+    .m_status_depth_commit(),
     .m_status_overflow(),
     .m_status_bad_frame(),
     .m_status_good_frame()

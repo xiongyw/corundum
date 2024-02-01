@@ -63,14 +63,14 @@ module eth_mac_phy_10g_fifo #
     parameter RX_DROP_WHEN_FULL = RX_DROP_OVERSIZE_FRAME,
     parameter PTP_PERIOD_NS = 4'h6,
     parameter PTP_PERIOD_FNS = 16'h6666,
-    parameter PTP_USE_SAMPLE_CLOCK = 0,
     parameter TX_PTP_TS_ENABLE = 0,
-    parameter RX_PTP_TS_ENABLE = 0,
+    parameter RX_PTP_TS_ENABLE = TX_PTP_TS_ENABLE,
+    parameter TX_PTP_TS_CTRL_IN_TUSER = 0,
     parameter TX_PTP_TS_FIFO_DEPTH = 64,
     parameter PTP_TS_WIDTH = 96,
-    parameter TX_PTP_TAG_ENABLE = 0,
+    parameter TX_PTP_TAG_ENABLE = TX_PTP_TS_ENABLE,
     parameter PTP_TAG_WIDTH = 16,
-    parameter TX_USER_WIDTH = (TX_PTP_TS_ENABLE && TX_PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + 1,
+    parameter TX_USER_WIDTH = (TX_PTP_TS_ENABLE ? (TX_PTP_TAG_ENABLE ? PTP_TAG_WIDTH : 0) + (TX_PTP_TS_CTRL_IN_TUSER ? 1 : 0) : 0) + 1,
     parameter RX_USER_WIDTH = (RX_PTP_TS_ENABLE ? PTP_TS_WIDTH : 0) + 1
 )
 (
@@ -146,9 +146,11 @@ module eth_mac_phy_10g_fifo #
     /*
      * Configuration
      */
-    input  wire [7:0]                 ifg_delay,
-    input  wire                       tx_prbs31_enable,
-    input  wire                       rx_prbs31_enable
+    input  wire [7:0]                 cfg_ifg,
+    input  wire                       cfg_tx_enable,
+    input  wire                       cfg_rx_enable,
+    input  wire                       cfg_tx_prbs31_enable,
+    input  wire                       cfg_rx_prbs31_enable
 );
 
 parameter KEEP_WIDTH = DATA_WIDTH/8;
@@ -254,9 +256,7 @@ if (TX_PTP_TS_ENABLE) begin : tx_ptp
     
     ptp_clock_cdc #(
         .TS_WIDTH(PTP_TS_WIDTH),
-        .NS_WIDTH(6),
-        .FNS_WIDTH(16),
-        .USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK)
+        .NS_WIDTH(6)
     )
     tx_ptp_cdc (
         .input_clk(logic_clk),
@@ -331,9 +331,7 @@ if (RX_PTP_TS_ENABLE) begin : rx_ptp
 
     ptp_clock_cdc #(
         .TS_WIDTH(PTP_TS_WIDTH),
-        .NS_WIDTH(6),
-        .FNS_WIDTH(16),
-        .USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK)
+        .NS_WIDTH(6)
     )
     rx_ptp_cdc (
         .input_clk(logic_clk),
@@ -368,6 +366,7 @@ eth_mac_phy_10g #(
     .PTP_PERIOD_FNS(PTP_PERIOD_FNS),
     .TX_PTP_TS_ENABLE(TX_PTP_TS_ENABLE),
     .TX_PTP_TS_WIDTH(PTP_TS_WIDTH),
+    .TX_PTP_TS_CTRL_IN_TUSER(TX_PTP_TS_CTRL_IN_TUSER),
     .TX_PTP_TAG_ENABLE(TX_PTP_TAG_ENABLE),
     .TX_PTP_TAG_WIDTH(PTP_TAG_WIDTH),
     .RX_PTP_TS_ENABLE(RX_PTP_TS_ENABLE),
@@ -423,10 +422,12 @@ eth_mac_phy_10g_inst (
     .rx_high_ber(rx_high_ber_int),
     .rx_status(rx_status_int),
 
-    .ifg_delay(ifg_delay),
+    .cfg_ifg(cfg_ifg),
+    .cfg_tx_enable(cfg_tx_enable),
+    .cfg_rx_enable(cfg_rx_enable),
 
-    .tx_prbs31_enable(tx_prbs31_enable),
-    .rx_prbs31_enable(rx_prbs31_enable)
+    .cfg_tx_prbs31_enable(cfg_tx_prbs31_enable),
+    .cfg_rx_prbs31_enable(cfg_rx_prbs31_enable)
 );
 
 axis_async_fifo_adapter #(

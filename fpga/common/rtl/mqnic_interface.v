@@ -18,8 +18,17 @@ module mqnic_interface #
     parameter PORTS = 1,
     parameter SCHEDULERS = 1,
 
+    // Clock configuration
+    parameter CLK_PERIOD_NS_NUM = 4,
+    parameter CLK_PERIOD_NS_DENOM = 1,
+
     // PTP configuration
+    parameter PTP_CLK_PERIOD_NS_NUM = 4,
+    parameter PTP_CLK_PERIOD_NS_DENOM = 1,
     parameter PTP_TS_WIDTH = 96,
+    parameter PTP_CLOCK_CDC_PIPELINE = 0,
+    parameter PTP_PEROUT_ENABLE = 0,
+    parameter PTP_PEROUT_COUNT = 1,
 
     // Queue manager configuration (interface)
     parameter EVENT_QUEUE_OP_TABLE_SIZE = 32,
@@ -62,6 +71,9 @@ module mqnic_interface #
     parameter TX_CHECKSUM_ENABLE = 1,
     parameter RX_HASH_ENABLE = 1,
     parameter RX_CHECKSUM_ENABLE = 1,
+    parameter PFC_ENABLE = 0,
+    parameter LFC_ENABLE = PFC_ENABLE,
+    parameter MAC_CTRL_ENABLE = 0,
     parameter TX_FIFO_DEPTH = 32768,
     parameter RX_FIFO_DEPTH = 32768,
     parameter MAX_TX_SIZE = 9214,
@@ -435,7 +447,13 @@ module mqnic_interface #
     input  wire [PORTS-1:0]                             s_axis_tx_cpl_valid,
     output wire [PORTS-1:0]                             s_axis_tx_cpl_ready,
 
+    output wire [PORTS-1:0]                             tx_enable,
     input  wire [PORTS-1:0]                             tx_status,
+    output wire [PORTS-1:0]                             tx_lfc_en,
+    output wire [PORTS-1:0]                             tx_lfc_req,
+    output wire [PORTS*8-1:0]                           tx_pfc_en,
+    output wire [PORTS*8-1:0]                           tx_pfc_req,
+    input  wire [PORTS-1:0]                             tx_fc_quanta_clk_en,
 
     /*
      * Receive data input
@@ -450,13 +468,35 @@ module mqnic_interface #
     input  wire [PORTS-1:0]                             s_axis_rx_tlast,
     input  wire [PORTS*AXIS_RX_USER_WIDTH-1:0]          s_axis_rx_tuser,
 
+    output wire [PORTS-1:0]                             rx_enable,
     input  wire [PORTS-1:0]                             rx_status,
+    output wire [PORTS-1:0]                             rx_lfc_en,
+    input  wire [PORTS-1:0]                             rx_lfc_req,
+    output wire [PORTS-1:0]                             rx_lfc_ack,
+    output wire [PORTS*8-1:0]                           rx_pfc_en,
+    input  wire [PORTS*8-1:0]                           rx_pfc_req,
+    output wire [PORTS*8-1:0]                           rx_pfc_ack,
+    input  wire [PORTS-1:0]                             rx_fc_quanta_clk_en,
 
     /*
      * PTP clock
      */
-    input  wire [95:0]                                  ptp_ts_96,
-    input  wire                                         ptp_ts_step,
+    input  wire                                         ptp_clk,
+    input  wire                                         ptp_rst,
+    input  wire                                         ptp_sample_clk,
+    input  wire                                         ptp_td_sd,
+    input  wire                                         ptp_pps,
+    input  wire                                         ptp_pps_str,
+    input  wire                                         ptp_sync_locked,
+    input  wire [63:0]                                  ptp_sync_ts_rel,
+    input  wire                                         ptp_sync_ts_rel_step,
+    input  wire [96:0]                                  ptp_sync_ts_tod,
+    input  wire                                         ptp_sync_ts_tod_step,
+    input  wire                                         ptp_sync_pps,
+    input  wire                                         ptp_sync_pps_str,
+    input  wire [PTP_PEROUT_COUNT-1:0]                  ptp_perout_locked,
+    input  wire [PTP_PEROUT_COUNT-1:0]                  ptp_perout_error,
+    input  wire [PTP_PEROUT_COUNT-1:0]                  ptp_perout_pulse,
 
     /*
      * Interrupt request output
@@ -495,14 +535,14 @@ parameter DMA_CLIENT_LEN_WIDTH = DMA_LEN_WIDTH;
 
 parameter QUEUE_INDEX_WIDTH = TX_QUEUE_INDEX_WIDTH > RX_QUEUE_INDEX_WIDTH ? TX_QUEUE_INDEX_WIDTH : RX_QUEUE_INDEX_WIDTH;
 
-parameter AXIL_CSR_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_CTRL_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_RX_INDIR_TBL_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_EQM_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_CQM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_TX_QM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_RX_QM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+3)/8);
-parameter AXIL_SCHED_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+3)/8);
+parameter AXIL_CSR_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_CTRL_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_RX_INDIR_TBL_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_EQM_ADDR_WIDTH = AXIL_ADDR_WIDTH-5-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_CQM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_TX_QM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_RX_QM_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+4+7)/8);
+parameter AXIL_SCHED_ADDR_WIDTH = AXIL_ADDR_WIDTH-3-$clog2((SCHEDULERS+4+7)/8);
 
 parameter AXIL_CSR_BASE_ADDR = 0;
 parameter AXIL_CTRL_BASE_ADDR = AXIL_CSR_BASE_ADDR + 2**AXIL_CSR_ADDR_WIDTH;
@@ -527,6 +567,9 @@ localparam PORT_RB_STRIDE = 16'h1000;
 
 localparam SCHED_RB_BASE_ADDR = (PORT_RB_BASE_ADDR + PORT_RB_STRIDE*PORTS);
 localparam SCHED_RB_STRIDE = 16'h1000;
+
+localparam TX_FIFO_DEPTH_WIDTH = $clog2(TX_FIFO_DEPTH)+1;
+localparam RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH)+1;
 
 // parameter sizing helpers
 function [31:0] w_32(input [31:0] val);
@@ -1084,6 +1127,8 @@ always @(posedge clk) begin
                 ctrl_reg_rd_data_reg[8] <= TX_CHECKSUM_ENABLE;
                 ctrl_reg_rd_data_reg[9] <= RX_CHECKSUM_ENABLE;
                 ctrl_reg_rd_data_reg[10] <= RX_HASH_ENABLE;
+                ctrl_reg_rd_data_reg[11] <= LFC_ENABLE;
+                ctrl_reg_rd_data_reg[12] <= PFC_ENABLE;
             end
             RBB+8'h10: ctrl_reg_rd_data_reg <= PORTS;                       // IF ctrl: Port count
             RBB+8'h14: ctrl_reg_rd_data_reg <= SCHEDULERS;                  // IF ctrl: Scheduler count
@@ -1091,6 +1136,8 @@ always @(posedge clk) begin
             RBB+8'h24: ctrl_reg_rd_data_reg <= MAX_RX_SIZE;                 // IF ctrl: Max RX MTU
             RBB+8'h28: ctrl_reg_rd_data_reg <= tx_mtu_reg;                  // IF ctrl: TX MTU
             RBB+8'h2C: ctrl_reg_rd_data_reg <= rx_mtu_reg;                  // IF ctrl: RX MTU
+            RBB+8'h30: ctrl_reg_rd_data_reg <= TX_FIFO_DEPTH;               // IF ctrl: TX FIFO depth
+            RBB+8'h34: ctrl_reg_rd_data_reg <= RX_FIFO_DEPTH;               // IF ctrl: RX FIFO depth
             // Event queue manager
             RBB+8'h40: ctrl_reg_rd_data_reg <= 32'h0000C010;                // Event QM: Type
             RBB+8'h44: ctrl_reg_rd_data_reg <= 32'h00000400;                // Event QM: Version
@@ -2198,26 +2245,49 @@ genvar n;
 for (n = 0; n < SCHEDULERS; n = n + 1) begin : sched
 
     mqnic_tx_scheduler_block #(
+        // Structural configuration
         .PORTS(PORTS),
         .INDEX(n),
+
+        // Clock configuration
+        .CLK_PERIOD_NS_NUM(CLK_PERIOD_NS_NUM),
+        .CLK_PERIOD_NS_DENOM(CLK_PERIOD_NS_DENOM),
+
+        // PTP configuration
+        .PTP_CLK_PERIOD_NS_NUM(PTP_CLK_PERIOD_NS_NUM),
+        .PTP_CLK_PERIOD_NS_DENOM(PTP_CLK_PERIOD_NS_DENOM),
+        .PTP_CLOCK_CDC_PIPELINE(PTP_CLOCK_CDC_PIPELINE),
+        .PTP_PEROUT_ENABLE(PTP_PEROUT_ENABLE),
+        .PTP_PEROUT_COUNT(PTP_PEROUT_COUNT),
+
+        // Queue manager configuration
+        .QUEUE_INDEX_WIDTH(TX_QUEUE_INDEX_WIDTH),
+
+        // Scheduler configuration
+        .TX_SCHEDULER_OP_TABLE_SIZE(TX_SCHEDULER_OP_TABLE_SIZE),
+        .TX_SCHEDULER_PIPELINE(TX_SCHEDULER_PIPELINE),
+        .TDMA_INDEX_WIDTH(TDMA_INDEX_WIDTH),
+
+        // Interface configuration
+        .DMA_LEN_WIDTH(DMA_CLIENT_LEN_WIDTH),
+        .TX_REQ_TAG_WIDTH(REQ_TAG_WIDTH_INT),
+        .MAX_TX_SIZE(MAX_TX_SIZE),
+
+        // Register interface configuration
         .REG_ADDR_WIDTH(AXIL_CTRL_ADDR_WIDTH),
         .REG_DATA_WIDTH(AXIL_DATA_WIDTH),
         .REG_STRB_WIDTH(AXIL_STRB_WIDTH),
         .RB_BASE_ADDR(SCHED_RB_BASE_ADDR + SCHED_RB_STRIDE*n),
         .RB_NEXT_PTR(n < SCHEDULERS-1 ? SCHED_RB_BASE_ADDR + SCHED_RB_STRIDE*(n+1) : 0),
+
+        // AXI lite interface configuration
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_SCHED_ADDR_WIDTH),
         .AXIL_STRB_WIDTH(AXIL_STRB_WIDTH),
         .AXIL_OFFSET(AXIL_SCHED_BASE_ADDR + (2**AXIL_SCHED_ADDR_WIDTH)*n),
-        .LEN_WIDTH(DMA_CLIENT_LEN_WIDTH),
-        .REQ_TAG_WIDTH(REQ_TAG_WIDTH_INT),
-        .OP_TABLE_SIZE(TX_SCHEDULER_OP_TABLE_SIZE),
-        .QUEUE_INDEX_WIDTH(TX_QUEUE_INDEX_WIDTH),
-        .PIPELINE(TX_SCHEDULER_PIPELINE),
-        .TDMA_INDEX_WIDTH(TDMA_INDEX_WIDTH),
-        .PTP_TS_WIDTH(PTP_TS_WIDTH),
-        .AXIS_TX_DEST_WIDTH(AXIS_IF_TX_DEST_WIDTH),
-        .MAX_TX_SIZE(MAX_TX_SIZE)
+
+        // Streaming interface configuration
+        .AXIS_TX_DEST_WIDTH(AXIS_IF_TX_DEST_WIDTH)
     )
     scheduler_block (
         .clk(clk),
@@ -2286,8 +2356,22 @@ for (n = 0; n < SCHEDULERS; n = n + 1) begin : sched
         /*
          * PTP clock
          */
-        .ptp_ts_96(ptp_ts_96),
-        .ptp_ts_step(ptp_ts_step),
+        .ptp_clk(ptp_clk),
+        .ptp_rst(ptp_rst),
+        .ptp_sample_clk(ptp_sample_clk),
+        .ptp_td_sd(ptp_td_sd),
+        .ptp_pps(ptp_pps),
+        .ptp_pps_str(ptp_pps_str),
+        .ptp_sync_locked(ptp_sync_locked),
+        .ptp_sync_ts_rel(ptp_sync_ts_rel),
+        .ptp_sync_ts_rel_step(ptp_sync_ts_rel_step),
+        .ptp_sync_ts_tod(ptp_sync_ts_tod),
+        .ptp_sync_ts_tod_step(ptp_sync_ts_tod_step),
+        .ptp_sync_pps(ptp_sync_pps),
+        .ptp_sync_pps_str(ptp_sync_pps_str),
+        .ptp_perout_locked(ptp_perout_locked),
+        .ptp_perout_error(ptp_perout_error),
+        .ptp_perout_pulse(ptp_perout_pulse),
 
         /*
          * Configuration
@@ -2880,6 +2964,8 @@ wire [PORTS-1:0] axis_if_tx_fifo_tlast;
 wire [PORTS*AXIS_IF_TX_ID_WIDTH-1:0] axis_if_tx_fifo_tid;
 wire [PORTS*AXIS_IF_TX_USER_WIDTH-1:0] axis_if_tx_fifo_tuser;
 
+wire [RX_FIFO_DEPTH_WIDTH*PORTS-1:0]  tx_fifo_status_depth;
+
 if (APP_AXIS_IF_ENABLE) begin
 
     assign m_axis_app_if_tx_tdata = if_tx_axis_tdata;
@@ -2925,6 +3011,7 @@ end
 
 tx_fifo #(
     .FIFO_DEPTH(TX_FIFO_DEPTH),
+    .FIFO_DEPTH_WIDTH(TX_FIFO_DEPTH_WIDTH),
     .PORTS(PORTS),
     .S_DATA_WIDTH(AXIS_IF_DATA_WIDTH),
     .S_KEEP_ENABLE(AXIS_IF_KEEP_WIDTH > 1),
@@ -2971,6 +3058,8 @@ tx_fifo_inst (
     /*
      * Status
      */
+    .status_depth(tx_fifo_status_depth),
+    .status_depth_commit(),
     .status_overflow(),
     .status_bad_frame(),
     .status_good_frame()
@@ -2995,8 +3084,11 @@ wire [AXIS_IF_RX_ID_WIDTH-1:0] axis_if_rx_tid;
 wire [AXIS_IF_RX_DEST_WIDTH-1:0] axis_if_rx_tdest;
 wire [AXIS_IF_RX_USER_WIDTH-1:0] axis_if_rx_tuser;
 
+wire [RX_FIFO_DEPTH_WIDTH*PORTS-1:0]  rx_fifo_status_depth;
+
 rx_fifo #(
     .FIFO_DEPTH(RX_FIFO_DEPTH),
+    .FIFO_DEPTH_WIDTH(RX_FIFO_DEPTH_WIDTH),
     .PORTS(PORTS),
     .S_DATA_WIDTH(AXIS_SYNC_DATA_WIDTH),
     .S_KEEP_ENABLE(AXIS_SYNC_KEEP_WIDTH > 1),
@@ -3042,6 +3134,8 @@ rx_fifo_inst (
     /*
      * Status
      */
+    .status_depth(rx_fifo_status_depth),
+    .status_depth_commit(),
     .status_overflow(),
     .status_bad_frame(),
     .status_good_frame()
@@ -3101,6 +3195,13 @@ for (n = 0; n < PORTS; n = n + 1) begin : port
         .TX_CPL_ENABLE(TX_CPL_ENABLE),
         .TX_CPL_FIFO_DEPTH(TX_CPL_FIFO_DEPTH),
         .TX_TAG_WIDTH(TX_TAG_WIDTH),
+        .PFC_ENABLE(PFC_ENABLE),
+        .LFC_ENABLE(LFC_ENABLE),
+        .MAC_CTRL_ENABLE(MAC_CTRL_ENABLE),
+        .TX_FIFO_DEPTH(TX_FIFO_DEPTH),
+        .RX_FIFO_DEPTH(RX_FIFO_DEPTH),
+        .TX_FIFO_DEPTH_WIDTH(TX_FIFO_DEPTH_WIDTH),
+        .RX_FIFO_DEPTH_WIDTH(RX_FIFO_DEPTH_WIDTH),
         .MAX_TX_SIZE(MAX_TX_SIZE),
         .MAX_RX_SIZE(MAX_RX_SIZE),
 
@@ -3275,7 +3376,15 @@ for (n = 0; n < PORTS; n = n + 1) begin : port
         .s_axis_tx_cpl_valid(s_axis_tx_cpl_valid[n +: 1]),
         .s_axis_tx_cpl_ready(s_axis_tx_cpl_ready[n +: 1]),
 
+        .tx_enable(tx_enable[n +: 1]),
         .tx_status(tx_status[n +: 1]),
+        .tx_lfc_en(tx_lfc_en[n +: 1]),
+        .tx_lfc_req(tx_lfc_req[n +: 1]),
+        .tx_pfc_en(tx_pfc_en[n*8 +: 8]),
+        .tx_pfc_req(tx_pfc_req[n*8 +: 8]),
+        .tx_fc_quanta_clk_en(tx_fc_quanta_clk_en[n +: 1]),
+
+        .tx_fifo_status_depth(tx_fifo_status_depth[n*TX_FIFO_DEPTH_WIDTH +: TX_FIFO_DEPTH_WIDTH]),
 
         /*
          * Receive data input
@@ -3290,7 +3399,17 @@ for (n = 0; n < PORTS; n = n + 1) begin : port
         .s_axis_rx_tlast(s_axis_rx_tlast[n +: 1]),
         .s_axis_rx_tuser(s_axis_rx_tuser[n*AXIS_RX_USER_WIDTH +: AXIS_RX_USER_WIDTH]),
 
-        .rx_status(rx_status[n +: 1])
+        .rx_enable(rx_enable[n +: 1]),
+        .rx_status(rx_status[n +: 1]),
+        .rx_lfc_en(rx_lfc_en[n +: 1]),
+        .rx_lfc_req(rx_lfc_req[n +: 1]),
+        .rx_lfc_ack(rx_lfc_ack[n +: 1]),
+        .rx_pfc_en(rx_pfc_en[n*8 +: 8]),
+        .rx_pfc_req(rx_pfc_req[n*8 +: 8]),
+        .rx_pfc_ack(rx_pfc_ack[n*8 +: 8]),
+        .rx_fc_quanta_clk_en(rx_fc_quanta_clk_en[n +: 1]),
+
+        .rx_fifo_status_depth(rx_fifo_status_depth[n*RX_FIFO_DEPTH_WIDTH +: RX_FIFO_DEPTH_WIDTH])
     );
 
 end

@@ -60,10 +60,11 @@ dict set params TDMA_BER_ENABLE "0"
 # Transceiver configuration
 set eth_xcvr_freerun_freq {125}
 set eth_xcvr_line_rate {25.78125}
-set eth_xcvr_sec_line_rate {10.3125}
 set eth_xcvr_refclk_freq {161.1328125}
+set eth_xcvr_sec_line_rate {10.3125}
+set eth_xcvr_sec_refclk_freq $eth_xcvr_refclk_freq
 set eth_xcvr_qpll_fracn [expr {int(fmod($eth_xcvr_line_rate*1000/2 / $eth_xcvr_refclk_freq, 1)*pow(2, 24))}]
-set eth_xcvr_sec_qpll_fracn [expr {int(fmod($eth_xcvr_sec_line_rate*1000/2 / $eth_xcvr_refclk_freq, 1)*pow(2, 24))}]
+set eth_xcvr_sec_qpll_fracn [expr {int(fmod($eth_xcvr_sec_line_rate*1000/2 / $eth_xcvr_sec_refclk_freq, 1)*pow(2, 24))}]
 set eth_xcvr_rx_eq_mode {DFE}
 
 # Structural configuration
@@ -113,12 +114,23 @@ dict set params TX_CPL_FIFO_DEPTH "32"
 dict set params TX_CHECKSUM_ENABLE "1"
 dict set params RX_HASH_ENABLE "1"
 dict set params RX_CHECKSUM_ENABLE "1"
+dict set params PFC_ENABLE "1"
+dict set params LFC_ENABLE [dict get $params PFC_ENABLE]
+dict set params ENABLE_PADDING "1"
+dict set params ENABLE_DIC "1"
+dict set params MIN_FRAME_LENGTH "64"
 dict set params TX_FIFO_DEPTH "32768"
-dict set params RX_FIFO_DEPTH "32768"
+dict set params RX_FIFO_DEPTH "65536"
 dict set params MAX_TX_SIZE "9214"
 dict set params MAX_RX_SIZE "9214"
 dict set params TX_RAM_SIZE "32768"
 dict set params RX_RAM_SIZE "131072"
+
+# RAM configuration
+dict set params DDR_CH "4"
+dict set params DDR_ENABLE "0"
+dict set params AXI_DDR_ID_WIDTH "8"
+dict set params AXI_DDR_MAX_BURST_LEN "256"
 
 # Application block configuration
 dict set params APP_ID "32'h00000000"
@@ -163,6 +175,43 @@ dict set params STAT_DMA_ENABLE "1"
 dict set params STAT_PCIE_ENABLE "1"
 dict set params STAT_INC_WIDTH "24"
 dict set params STAT_ID_WIDTH "12"
+
+# DDR4 MIG settings
+if {[dict get $params DDR_ENABLE]} {
+    # components (DDR4 A, DDR4 B)
+    set ddr4 [get_ips ddr4_0]
+
+    # performance-related configuration
+    set_property CONFIG.C0.DDR4_AxiArbitrationScheme {RD_PRI_REG} $ddr4
+    set_property CONFIG.C0.DDR4_AUTO_AP_COL_A3 {true} $ddr4
+    set_property CONFIG.C0.DDR4_Mem_Add_Map {ROW_COLUMN_BANK_INTLV} $ddr4
+
+    # set AXI ID width
+    set_property CONFIG.C0.DDR4_AxiIDWidth [dict get $params AXI_DDR_ID_WIDTH] $ddr4
+
+    # extract AXI configuration
+    dict set params AXI_DDR_DATA_WIDTH [get_property CONFIG.C0.DDR4_AxiDataWidth $ddr4]
+    dict set params AXI_DDR_ADDR_WIDTH [get_property CONFIG.C0.DDR4_AxiAddressWidth $ddr4]
+    dict set params AXI_DDR_NARROW_BURST [expr [get_property CONFIG.C0.DDR4_AxiNarrowBurst $ddr4] && 1]
+
+    if {[dict get $params DDR_CH] > 2} {
+        # SO-DIMMs (DDR4 SODMM A, DDR4 SODIMM B)
+        set ddr4 [get_ips ddr4_sodimm_0]
+
+        # performance-related configuration
+        set_property CONFIG.C0.DDR4_AxiArbitrationScheme {RD_PRI_REG} $ddr4
+        set_property CONFIG.C0.DDR4_AUTO_AP_COL_A3 {true} $ddr4
+        set_property CONFIG.C0.DDR4_Mem_Add_Map {ROW_COLUMN_BANK_INTLV} $ddr4
+
+        # set AXI ID width
+        set_property CONFIG.C0.DDR4_AxiIDWidth [dict get $params AXI_DDR_ID_WIDTH] $ddr4
+
+        # extract AXI configuration
+        dict set params AXI_DDR_DATA_WIDTH [get_property CONFIG.C0.DDR4_AxiDataWidth $ddr4]
+        dict set params AXI_DDR_ADDR_WIDTH [expr max([get_property CONFIG.C0.DDR4_AxiAddressWidth $ddr4], [dict get $params AXI_DDR_ADDR_WIDTH])]
+        dict set params AXI_DDR_NARROW_BURST [expr [get_property CONFIG.C0.DDR4_AxiNarrowBurst $ddr4] && [dict get $params AXI_DDR_NARROW_BURST]]
+    }
+}
 
 # PCIe IP core settings
 set pcie [get_ips pcie4_uscale_plus_0]
@@ -242,7 +291,7 @@ if {$eth_xcvr_sec_line_rate != 0} {
     dict set xcvr_config CONFIG.SECONDARY_QPLL_ENABLE true
     dict set xcvr_config CONFIG.SECONDARY_QPLL_FRACN_NUMERATOR $eth_xcvr_sec_qpll_fracn
     dict set xcvr_config CONFIG.SECONDARY_QPLL_LINE_RATE $eth_xcvr_sec_line_rate
-    dict set xcvr_config CONFIG.SECONDARY_QPLL_REFCLK_FREQUENCY $eth_xcvr_refclk_freq
+    dict set xcvr_config CONFIG.SECONDARY_QPLL_REFCLK_FREQUENCY $eth_xcvr_sec_refclk_freq
 } else {
     dict set xcvr_config CONFIG.SECONDARY_QPLL_ENABLE false
 }

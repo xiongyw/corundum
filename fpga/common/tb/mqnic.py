@@ -85,29 +85,37 @@ MQNIC_RB_CLK_INFO_CLK_NOM_PER  = 0x18
 MQNIC_RB_CLK_INFO_CLK_FREQ     = 0x1C
 MQNIC_RB_CLK_INFO_FREQ_BASE    = 0x20
 
-MQNIC_RB_PHC_TYPE               = 0x0000C080
-MQNIC_RB_PHC_VER                = 0x00000100
-MQNIC_RB_PHC_REG_CTRL           = 0x0C
-MQNIC_RB_PHC_REG_CUR_FNS        = 0x10
-MQNIC_RB_PHC_REG_CUR_NS         = 0x14
-MQNIC_RB_PHC_REG_CUR_SEC_L      = 0x18
-MQNIC_RB_PHC_REG_CUR_SEC_H      = 0x1C
-MQNIC_RB_PHC_REG_GET_FNS        = 0x20
-MQNIC_RB_PHC_REG_GET_NS         = 0x24
-MQNIC_RB_PHC_REG_GET_SEC_L      = 0x28
-MQNIC_RB_PHC_REG_GET_SEC_H      = 0x2C
-MQNIC_RB_PHC_REG_SET_FNS        = 0x30
-MQNIC_RB_PHC_REG_SET_NS         = 0x34
-MQNIC_RB_PHC_REG_SET_SEC_L      = 0x38
-MQNIC_RB_PHC_REG_SET_SEC_H      = 0x3C
-MQNIC_RB_PHC_REG_PERIOD_FNS     = 0x40
-MQNIC_RB_PHC_REG_PERIOD_NS      = 0x44
-MQNIC_RB_PHC_REG_NOM_PERIOD_FNS = 0x48
-MQNIC_RB_PHC_REG_NOM_PERIOD_NS  = 0x4C
-MQNIC_RB_PHC_REG_ADJ_FNS        = 0x50
-MQNIC_RB_PHC_REG_ADJ_NS         = 0x54
-MQNIC_RB_PHC_REG_ADJ_COUNT      = 0x58
-MQNIC_RB_PHC_REG_ADJ_ACTIVE     = 0x5C
+MQNIC_RB_PHC_TYPE                = 0x0000C080
+MQNIC_RB_PHC_VER                 = 0x00000200
+MQNIC_RB_PHC_REG_CTRL            = 0x0C
+MQNIC_RB_PHC_REG_CUR_FNS         = 0x10
+MQNIC_RB_PHC_REG_CUR_TOD_NS      = 0x14
+MQNIC_RB_PHC_REG_CUR_TOD_SEC_L   = 0x18
+MQNIC_RB_PHC_REG_CUR_TOD_SEC_H   = 0x1C
+MQNIC_RB_PHC_REG_CUR_REL_NS_L    = 0x20
+MQNIC_RB_PHC_REG_CUR_REL_NS_H    = 0x24
+MQNIC_RB_PHC_REG_CUR_PTM_NS_L    = 0x28
+MQNIC_RB_PHC_REG_CUR_PTM_NS_H    = 0x2C
+MQNIC_RB_PHC_REG_SNAP_FNS        = 0x30
+MQNIC_RB_PHC_REG_SNAP_TOD_NS     = 0x34
+MQNIC_RB_PHC_REG_SNAP_TOD_SEC_L  = 0x38
+MQNIC_RB_PHC_REG_SNAP_TOD_SEC_H  = 0x3C
+MQNIC_RB_PHC_REG_SNAP_REL_NS_L   = 0x40
+MQNIC_RB_PHC_REG_SNAP_REL_NS_H   = 0x44
+MQNIC_RB_PHC_REG_SNAP_PTM_NS_L   = 0x48
+MQNIC_RB_PHC_REG_SNAP_PTM_NS_H   = 0x4C
+MQNIC_RB_PHC_REG_OFFSET_TOD_NS   = 0x50
+MQNIC_RB_PHC_REG_SET_TOD_NS      = 0x54
+MQNIC_RB_PHC_REG_SET_TOD_SEC_L   = 0x58
+MQNIC_RB_PHC_REG_SET_TOD_SEC_H   = 0x5C
+MQNIC_RB_PHC_REG_SET_REL_NS_L    = 0x60
+MQNIC_RB_PHC_REG_SET_REL_NS_H    = 0x64
+MQNIC_RB_PHC_REG_OFFSET_REL_NS   = 0x68
+MQNIC_RB_PHC_REG_OFFSET_FNS      = 0x6C
+MQNIC_RB_PHC_REG_NOM_PERIOD_FNS  = 0x70
+MQNIC_RB_PHC_REG_NOM_PERIOD_NS   = 0x74
+MQNIC_RB_PHC_REG_PERIOD_FNS      = 0x78
+MQNIC_RB_PHC_REG_PERIOD_NS       = 0x7C
 
 MQNIC_RB_PHC_PEROUT_TYPE              = 0x0000C081
 MQNIC_RB_PHC_PEROUT_VER               = 0x00000100
@@ -132,21 +140,25 @@ MQNIC_RB_IF_REG_COUNT       = 0x10
 MQNIC_RB_IF_REG_STRIDE      = 0x14
 MQNIC_RB_IF_REG_CSR_OFFSET  = 0x18
 
-MQNIC_RB_IF_CTRL_TYPE            = 0x0000C001
-MQNIC_RB_IF_CTRL_VER             = 0x00000400
-MQNIC_RB_IF_CTRL_REG_FEATURES    = 0x0C
-MQNIC_RB_IF_CTRL_REG_PORT_COUNT  = 0x10
-MQNIC_RB_IF_CTRL_REG_SCHED_COUNT = 0x14
-MQNIC_RB_IF_CTRL_REG_MAX_TX_MTU  = 0x20
-MQNIC_RB_IF_CTRL_REG_MAX_RX_MTU  = 0x24
-MQNIC_RB_IF_CTRL_REG_TX_MTU      = 0x28
-MQNIC_RB_IF_CTRL_REG_RX_MTU      = 0x2C
+MQNIC_RB_IF_CTRL_TYPE               = 0x0000C001
+MQNIC_RB_IF_CTRL_VER                = 0x00000400
+MQNIC_RB_IF_CTRL_REG_FEATURES       = 0x0C
+MQNIC_RB_IF_CTRL_REG_PORT_COUNT     = 0x10
+MQNIC_RB_IF_CTRL_REG_SCHED_COUNT    = 0x14
+MQNIC_RB_IF_CTRL_REG_MAX_TX_MTU     = 0x20
+MQNIC_RB_IF_CTRL_REG_MAX_RX_MTU     = 0x24
+MQNIC_RB_IF_CTRL_REG_TX_MTU         = 0x28
+MQNIC_RB_IF_CTRL_REG_RX_MTU         = 0x2C
+MQNIC_RB_IF_CTRL_REG_TX_FIFO_DEPTH  = 0x20
+MQNIC_RB_IF_CTRL_REG_RX_FIFO_DEPTH  = 0x24
 
 MQNIC_IF_FEATURE_RSS      = (1 << 0)
 MQNIC_IF_FEATURE_PTP_TS   = (1 << 4)
 MQNIC_IF_FEATURE_TX_CSUM  = (1 << 8)
 MQNIC_IF_FEATURE_RX_CSUM  = (1 << 9)
 MQNIC_IF_FEATURE_RX_HASH  = (1 << 10)
+MQNIC_IF_FEATURE_LFC      = (1 << 11)
+MQNIC_IF_FEATURE_PFC      = (1 << 12)
 
 MQNIC_RB_RX_QUEUE_MAP_TYPE             = 0x0000C090
 MQNIC_RB_RX_QUEUE_MAP_VER              = 0x00000200
@@ -186,10 +198,47 @@ MQNIC_RB_PORT_VER         = 0x00000200
 MQNIC_RB_PORT_REG_OFFSET  = 0x0C
 
 MQNIC_RB_PORT_CTRL_TYPE           = 0x0000C003
-MQNIC_RB_PORT_CTRL_VER            = 0x00000200
+MQNIC_RB_PORT_CTRL_VER            = 0x00000300
 MQNIC_RB_PORT_CTRL_REG_FEATURES   = 0x0C
-MQNIC_RB_PORT_CTRL_REG_TX_STATUS  = 0x10
-MQNIC_RB_PORT_CTRL_REG_RX_STATUS  = 0x14
+MQNIC_RB_PORT_CTRL_REG_TX_CTRL    = 0x10
+MQNIC_RB_PORT_CTRL_REG_RX_CTRL    = 0x14
+MQNIC_RB_PORT_CTRL_REG_LFC_CTRL   = 0x1C
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL0  = 0x20
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL1  = 0x24
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL2  = 0x28
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL3  = 0x2C
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL4  = 0x30
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL5  = 0x34
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL6  = 0x38
+MQNIC_RB_PORT_CTRL_REG_PFC_CTRL7  = 0x3C
+
+MQNIC_PORT_FEATURE_LFC           = (1 << 0)
+MQNIC_PORT_FEATURE_PFC           = (1 << 1)
+MQNIC_PORT_FEATURE_INT_MAC_CTRL  = (1 << 2)
+
+MQNIC_PORT_TX_CTRL_EN            = (1 << 0)
+MQNIC_PORT_TX_CTRL_PAUSE         = (1 << 8)
+MQNIC_PORT_TX_CTRL_STATUS        = (1 << 16)
+MQNIC_PORT_TX_CTRL_RESET         = (1 << 17)
+MQNIC_PORT_TX_CTRL_PAUSE_REQ     = (1 << 24)
+MQNIC_PORT_TX_CTRL_PAUSE_ACK     = (1 << 25)
+
+MQNIC_PORT_RX_CTRL_EN            = (1 << 0)
+MQNIC_PORT_RX_CTRL_PAUSE         = (1 << 8)
+MQNIC_PORT_RX_CTRL_STATUS        = (1 << 16)
+MQNIC_PORT_RX_CTRL_RESET         = (1 << 17)
+MQNIC_PORT_RX_CTRL_PAUSE_REQ     = (1 << 24)
+MQNIC_PORT_RX_CTRL_PAUSE_ACK     = (1 << 25)
+
+MQNIC_PORT_LFC_CTRL_TX_LFC_EN    = (1 << 24)
+MQNIC_PORT_LFC_CTRL_RX_LFC_EN    = (1 << 25)
+MQNIC_PORT_LFC_CTRL_TX_LFC_REQ   = (1 << 28)
+MQNIC_PORT_LFC_CTRL_RX_LFC_REQ   = (1 << 29)
+
+MQNIC_PORT_PFC_CTRL_TX_PFC_EN    = (1 << 24)
+MQNIC_PORT_PFC_CTRL_RX_PFC_EN    = (1 << 25)
+MQNIC_PORT_PFC_CTRL_TX_PFC_REQ   = (1 << 28)
+MQNIC_PORT_PFC_CTRL_RX_PFC_REQ   = (1 << 29)
 
 MQNIC_RB_SCHED_BLOCK_TYPE        = 0x0000C004
 MQNIC_RB_SCHED_BLOCK_VER         = 0x00000300
@@ -1119,6 +1168,9 @@ class Port:
         self.port_ctrl_rb = None
 
         self.port_features = None
+        self.port_feature_lfc = None
+        self.port_feature_pfc = None
+        self.port_feature_int_mac_ctrl = None
 
     async def init(self):
         # Read ID registers
@@ -1129,14 +1181,42 @@ class Port:
         self.port_ctrl_rb = self.reg_blocks.find(MQNIC_RB_PORT_CTRL_TYPE, MQNIC_RB_PORT_CTRL_VER)
 
         self.port_features = await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_FEATURES)
+        self.port_feature_lfc = bool(self.port_features & MQNIC_PORT_FEATURE_LFC)
+        self.port_feature_pfc = bool(self.port_features & MQNIC_PORT_FEATURE_PFC)
+        self.port_feature_int_mac_ctrl = bool(self.port_features & MQNIC_PORT_FEATURE_INT_MAC_CTRL)
 
         self.log.info("Port features: 0x%08x", self.port_features)
 
-    async def get_tx_status(self, port):
-        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_TX_STATUS)
+        await self.set_tx_ctrl(0)
+        await self.set_rx_ctrl(0)
+        await self.set_lfc_ctrl(0)
 
-    async def get_rx_status(self, port):
-        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_RX_STATUS)
+        for k in range(8):
+            await self.set_pfc_ctrl(k, 0)
+
+    async def get_tx_ctrl(self):
+        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_TX_CTRL)
+
+    async def set_tx_ctrl(self, val):
+        await self.port_ctrl_rb.write_dword(MQNIC_RB_PORT_CTRL_REG_TX_CTRL, val)
+
+    async def get_rx_ctrl(self):
+        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_RX_CTRL)
+
+    async def set_rx_ctrl(self, val):
+        await self.port_ctrl_rb.write_dword(MQNIC_RB_PORT_CTRL_REG_RX_CTRL, val)
+
+    async def get_lfc_ctrl(self):
+        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_LFC_CTRL)
+
+    async def set_lfc_ctrl(self, val):
+        await self.port_ctrl_rb.write_dword(MQNIC_RB_PORT_CTRL_REG_LFC_CTRL, val)
+
+    async def get_pfc_ctrl(self, index):
+        return await self.port_ctrl_rb.read_dword(MQNIC_RB_PORT_CTRL_REG_PFC_CTRL0 + 4*index)
+
+    async def set_pfc_ctrl(self, index, val):
+        await self.port_ctrl_rb.write_dword(MQNIC_RB_PORT_CTRL_REG_PFC_CTRL0 + 4*index, val)
 
 
 class Interface:
@@ -1165,6 +1245,8 @@ class Interface:
 
         self.max_tx_mtu = 0
         self.max_rx_mtu = 0
+        self.tx_fifo_depth = 0
+        self.rx_fifo_depth = 0
 
         self.eq_res = None
         self.cq_res = None
@@ -1203,12 +1285,16 @@ class Interface:
         self.sched_block_count = await self.if_ctrl_rb.read_dword(MQNIC_RB_IF_CTRL_REG_SCHED_COUNT)
         self.max_tx_mtu = await self.if_ctrl_rb.read_dword(MQNIC_RB_IF_CTRL_REG_MAX_TX_MTU)
         self.max_rx_mtu = await self.if_ctrl_rb.read_dword(MQNIC_RB_IF_CTRL_REG_MAX_RX_MTU)
+        self.tx_fifo_depth = await self.if_ctrl_rb.read_dword(MQNIC_RB_IF_CTRL_REG_TX_FIFO_DEPTH)
+        self.rx_fifo_depth = await self.if_ctrl_rb.read_dword(MQNIC_RB_IF_CTRL_REG_RX_FIFO_DEPTH)
 
         self.if_feature_rss = bool(self.if_features & MQNIC_IF_FEATURE_RSS)
         self.if_feature_ptp_ts = bool(self.if_features & MQNIC_IF_FEATURE_PTP_TS)
         self.if_feature_tx_csum = bool(self.if_features & MQNIC_IF_FEATURE_TX_CSUM)
         self.if_feature_rx_csum = bool(self.if_features & MQNIC_IF_FEATURE_RX_CSUM)
         self.if_feature_rx_hash = bool(self.if_features & MQNIC_IF_FEATURE_RX_HASH)
+        self.if_feature_lfc = bool(self.if_features & MQNIC_IF_FEATURE_LFC)
+        self.if_feature_pfc = bool(self.if_features & MQNIC_IF_FEATURE_PFC)
 
         self.log.info("IF features: 0x%08x", self.if_features)
         self.log.info("Port count: %d", self.port_count)
@@ -1357,10 +1443,15 @@ class Interface:
         # wait for all writes to complete
         await self.hw_regs.read_dword(0)
 
+        await self.ports[0].set_tx_ctrl(MQNIC_PORT_TX_CTRL_EN)
+        await self.ports[0].set_rx_ctrl(MQNIC_PORT_RX_CTRL_EN)
+
         self.port_up = True
 
     async def close(self):
         self.port_up = False
+
+        await self.ports[0].set_rx_ctrl(0)
 
         for q in self.txq:
             q.disable()
@@ -1385,6 +1476,8 @@ class Interface:
 
         self.txq = []
         self.rxq = []
+
+        await self.ports[0].set_tx_ctrl(0)
 
     async def start_xmit(self, skb, tx_ring=None, csum_start=None, csum_offset=None):
         if not self.port_up:

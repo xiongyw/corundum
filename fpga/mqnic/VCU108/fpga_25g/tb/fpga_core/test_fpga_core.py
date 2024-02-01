@@ -3,6 +3,7 @@
 
 import logging
 import os
+import struct
 import sys
 
 import scapy.utils
@@ -17,7 +18,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, Timer
 
 from cocotbext.axi import AxiStreamBus
-from cocotbext.eth import XgmiiSource, XgmiiSink
+from cocotbext.eth import XgmiiSource, XgmiiSink, XgmiiFrame
 from cocotbext.pcie.core import RootComplex
 from cocotbext.pcie.xilinx.us import UltraScalePcieDevice
 
@@ -250,30 +251,18 @@ class TB(object):
         cocotb.start_soon(Clock(dut.ptp_sample_clk, 8, units="ns").start())
 
         # Ethernet
-        cocotb.start_soon(Clock(dut.qsfp_rx_clk_1, 2.56, units="ns").start())
-        self.qsfp_1_source = XgmiiSource(dut.qsfp_rxd_1, dut.qsfp_rxc_1, dut.qsfp_rx_clk_1, dut.qsfp_rx_rst_1)
-        cocotb.start_soon(Clock(dut.qsfp_tx_clk_1, 2.56, units="ns").start())
-        self.qsfp_1_sink = XgmiiSink(dut.qsfp_txd_1, dut.qsfp_txc_1, dut.qsfp_tx_clk_1, dut.qsfp_tx_rst_1)
+        self.qsfp_source = []
+        self.qsfp_sink = []
 
-        cocotb.start_soon(Clock(dut.qsfp_rx_clk_2, 2.56, units="ns").start())
-        self.qsfp_2_source = XgmiiSource(dut.qsfp_rxd_2, dut.qsfp_rxc_2, dut.qsfp_rx_clk_2, dut.qsfp_rx_rst_2)
-        cocotb.start_soon(Clock(dut.qsfp_tx_clk_2, 2.56, units="ns").start())
-        self.qsfp_2_sink = XgmiiSink(dut.qsfp_txd_2, dut.qsfp_txc_2, dut.qsfp_tx_clk_2, dut.qsfp_tx_rst_2)
-
-        cocotb.start_soon(Clock(dut.qsfp_rx_clk_3, 2.56, units="ns").start())
-        self.qsfp_3_source = XgmiiSource(dut.qsfp_rxd_3, dut.qsfp_rxc_3, dut.qsfp_rx_clk_3, dut.qsfp_rx_rst_3)
-        cocotb.start_soon(Clock(dut.qsfp_tx_clk_3, 2.56, units="ns").start())
-        self.qsfp_3_sink = XgmiiSink(dut.qsfp_txd_3, dut.qsfp_txc_3, dut.qsfp_tx_clk_3, dut.qsfp_tx_rst_3)
-
-        cocotb.start_soon(Clock(dut.qsfp_rx_clk_4, 2.56, units="ns").start())
-        self.qsfp_4_source = XgmiiSource(dut.qsfp_rxd_4, dut.qsfp_rxc_4, dut.qsfp_rx_clk_4, dut.qsfp_rx_rst_4)
-        cocotb.start_soon(Clock(dut.qsfp_tx_clk_4, 2.56, units="ns").start())
-        self.qsfp_4_sink = XgmiiSink(dut.qsfp_txd_4, dut.qsfp_txc_4, dut.qsfp_tx_clk_4, dut.qsfp_tx_rst_4)
-
-        dut.qsfp_rx_status_1.setimmediatevalue(1)
-        dut.qsfp_rx_status_2.setimmediatevalue(1)
-        dut.qsfp_rx_status_3.setimmediatevalue(1)
-        dut.qsfp_rx_status_4.setimmediatevalue(1)
+        for y in range(1, 5):
+            cocotb.start_soon(Clock(getattr(dut, f"qsfp_rx_clk_{y}"), 2.56, units="ns").start())
+            source = XgmiiSource(getattr(dut, f"qsfp_rxd_{y}"), getattr(dut, f"qsfp_rxc_{y}"), getattr(dut, f"qsfp_rx_clk_{y}"), getattr(dut, f"qsfp_rx_rst_{y}"))
+            self.qsfp_source.append(source)
+            cocotb.start_soon(Clock(getattr(dut, f"qsfp_tx_clk_{y}"), 2.56, units="ns").start())
+            sink = XgmiiSink(getattr(dut, f"qsfp_txd_{y}"), getattr(dut, f"qsfp_txc_{y}"), getattr(dut, f"qsfp_tx_clk_{y}"), getattr(dut, f"qsfp_tx_rst_{y}"))
+            self.qsfp_sink.append(sink)
+            getattr(dut, f"qsfp_rx_status_{y}").setimmediatevalue(1)
+            getattr(dut, f"qsfp_rx_error_count_{y}").setimmediatevalue(0)
 
         dut.btnu.setimmediatevalue(0)
         dut.btnl.setimmediatevalue(0)
@@ -287,13 +276,8 @@ class TB(object):
         dut.qsfp_drp_do.setimmediatevalue(0)
         dut.qsfp_drp_rdy.setimmediatevalue(0)
 
-        dut.qsfp_rx_error_count_1.setimmediatevalue(0)
-        dut.qsfp_rx_error_count_2.setimmediatevalue(0)
-        dut.qsfp_rx_error_count_3.setimmediatevalue(0)
-        dut.qsfp_rx_error_count_4.setimmediatevalue(0)
-
         dut.qsfp_modprsl.setimmediatevalue(0)
-        dut.qsfp_intl.setimmediatevalue(0)
+        dut.qsfp_intl.setimmediatevalue(1)
 
         dut.sw.setimmediatevalue(0)
 
@@ -308,27 +292,17 @@ class TB(object):
     async def init(self):
 
         self.dut.ptp_rst.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_1.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_1.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_2.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_2.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_3.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_3.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_4.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_4.setimmediatevalue(0)
+        for y in range(1, 5):
+            getattr(self.dut, f"qsfp_rx_rst_{y}").setimmediatevalue(0)
+            getattr(self.dut, f"qsfp_tx_rst_{y}").setimmediatevalue(0)
 
         await RisingEdge(self.dut.clk_250mhz)
         await RisingEdge(self.dut.clk_250mhz)
 
         self.dut.ptp_rst.setimmediatevalue(1)
-        self.dut.qsfp_rx_rst_1.setimmediatevalue(1)
-        self.dut.qsfp_tx_rst_1.setimmediatevalue(1)
-        self.dut.qsfp_rx_rst_2.setimmediatevalue(1)
-        self.dut.qsfp_tx_rst_2.setimmediatevalue(1)
-        self.dut.qsfp_rx_rst_3.setimmediatevalue(1)
-        self.dut.qsfp_tx_rst_3.setimmediatevalue(1)
-        self.dut.qsfp_rx_rst_4.setimmediatevalue(1)
-        self.dut.qsfp_tx_rst_4.setimmediatevalue(1)
+        for y in range(1, 5):
+            getattr(self.dut, f"qsfp_rx_rst_{y}").setimmediatevalue(1)
+            getattr(self.dut, f"qsfp_tx_rst_{y}").setimmediatevalue(1)
 
         await FallingEdge(self.dut.rst_250mhz)
         await Timer(100, 'ns')
@@ -337,14 +311,9 @@ class TB(object):
         await RisingEdge(self.dut.clk_250mhz)
 
         self.dut.ptp_rst.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_1.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_1.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_2.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_2.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_3.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_3.setimmediatevalue(0)
-        self.dut.qsfp_rx_rst_4.setimmediatevalue(0)
-        self.dut.qsfp_tx_rst_4.setimmediatevalue(0)
+        for y in range(1, 5):
+            getattr(self.dut, f"qsfp_rx_rst_{y}").setimmediatevalue(0)
+            getattr(self.dut, f"qsfp_tx_rst_{y}").setimmediatevalue(0)
 
         await self.rc.enumerate()
 
@@ -353,14 +322,9 @@ class TB(object):
             await RisingEdge(self.dut.clk_250mhz)
 
             if self.loopback_enable:
-                if not self.qsfp_1_sink.empty():
-                    await self.qsfp_1_source.send(await self.qsfp_1_sink.recv())
-                if not self.qsfp_2_sink.empty():
-                    await self.qsfp_2_source.send(await self.qsfp_2_sink.recv())
-                if not self.qsfp_3_sink.empty():
-                    await self.qsfp_3_source.send(await self.qsfp_3_sink.recv())
-                if not self.qsfp_4_sink.empty():
-                    await self.qsfp_4_source.send(await self.qsfp_4_sink.recv())
+                for x in range(len(self.qsfp_sink)):
+                    if not self.qsfp_sink[x].empty():
+                        await self.qsfp_source[x].send(await self.qsfp_sink[x].recv())
 
 
 @cocotb.test()
@@ -390,10 +354,10 @@ async def run_test_nic(dut):
 
     await tb.driver.interfaces[0].start_xmit(data, 0)
 
-    pkt = await tb.qsfp_1_sink.recv()
+    pkt = await tb.qsfp_sink[0].recv()
     tb.log.info("Packet: %s", pkt)
 
-    await tb.qsfp_1_source.send(pkt)
+    await tb.qsfp_source[0].send(pkt)
 
     pkt = await tb.driver.interfaces[0].recv()
 
@@ -413,10 +377,10 @@ async def run_test_nic(dut):
 
     await tb.driver.interfaces[0].start_xmit(test_pkt2.build(), 0, 34, 6)
 
-    pkt = await tb.qsfp_1_sink.recv()
+    pkt = await tb.qsfp_sink[0].recv()
     tb.log.info("Packet: %s", pkt)
 
-    await tb.qsfp_1_source.send(pkt)
+    await tb.qsfp_source[0].send(pkt)
 
     pkt = await tb.driver.interfaces[0].recv()
 
@@ -522,6 +486,35 @@ async def run_test_nic(dut):
 
     tb.loopback_enable = False
 
+    if tb.driver.interfaces[0].if_feature_lfc:
+        tb.log.info("Test LFC pause frame RX")
+
+        await tb.driver.interfaces[0].ports[0].set_lfc_ctrl(mqnic.MQNIC_PORT_LFC_CTRL_TX_LFC_EN | mqnic.MQNIC_PORT_LFC_CTRL_RX_LFC_EN)
+        await tb.driver.hw_regs.read_dword(0)
+
+        lfc_xoff = Ether(src='DA:D1:D2:D3:D4:D5', dst='01:80:C2:00:00:01', type=0x8808) / struct.pack('!HH', 0x0001, 2000)
+
+        await tb.qsfp_source[0].send(XgmiiFrame.from_payload(bytes(lfc_xoff)))
+
+        count = 16
+
+        pkts = [bytearray([(x+k) % 256 for x in range(1514)]) for k in range(count)]
+
+        tb.loopback_enable = True
+
+        for p in pkts:
+            await tb.driver.interfaces[0].start_xmit(p, 0)
+
+        for k in range(count):
+            pkt = await tb.driver.interfaces[0].recv()
+
+            tb.log.info("Packet: %s", pkt)
+            assert pkt.data == pkts[k]
+            if tb.driver.interfaces[0].if_feature_rx_csum:
+                assert pkt.rx_checksum == ~scapy.utils.checksum(bytes(pkt.data[14:])) & 0xffff
+
+        tb.loopback_enable = False
+
     await RisingEdge(dut.clk_250mhz)
     await RisingEdge(dut.clk_250mhz)
 
@@ -594,9 +587,13 @@ def test_fpga_core(request):
         os.path.join(eth_rtl_dir, "eth_mac_10g.v"),
         os.path.join(eth_rtl_dir, "axis_xgmii_rx_64.v"),
         os.path.join(eth_rtl_dir, "axis_xgmii_tx_64.v"),
+        os.path.join(eth_rtl_dir, "mac_ctrl_rx.v"),
+        os.path.join(eth_rtl_dir, "mac_ctrl_tx.v"),
+        os.path.join(eth_rtl_dir, "mac_pause_ctrl_rx.v"),
+        os.path.join(eth_rtl_dir, "mac_pause_ctrl_tx.v"),
         os.path.join(eth_rtl_dir, "lfsr.v"),
-        os.path.join(eth_rtl_dir, "ptp_clock.v"),
-        os.path.join(eth_rtl_dir, "ptp_clock_cdc.v"),
+        os.path.join(eth_rtl_dir, "ptp_td_phc.v"),
+        os.path.join(eth_rtl_dir, "ptp_td_leaf.v"),
         os.path.join(eth_rtl_dir, "ptp_perout.v"),
         os.path.join(axi_rtl_dir, "axil_interconnect.v"),
         os.path.join(axi_rtl_dir, "axil_crossbar.v"),
@@ -665,7 +662,6 @@ def test_fpga_core(request):
     parameters['PTP_CLK_PERIOD_NS_DENOM'] = 5
     parameters['PTP_CLOCK_PIPELINE'] = 0
     parameters['PTP_CLOCK_CDC_PIPELINE'] = 0
-    parameters['PTP_USE_SAMPLE_CLOCK'] = 1
     parameters['PTP_PORT_CDC_PIPELINE'] = 0
     parameters['PTP_PEROUT_ENABLE'] = 1
     parameters['PTP_PEROUT_COUNT'] = 1
@@ -700,6 +696,8 @@ def test_fpga_core(request):
     parameters['TX_CHECKSUM_ENABLE'] = 1
     parameters['RX_HASH_ENABLE'] = 1
     parameters['RX_CHECKSUM_ENABLE'] = 1
+    parameters['LFC_ENABLE'] = 1
+    parameters['PFC_ENABLE'] = parameters['LFC_ENABLE']
     parameters['TX_FIFO_DEPTH'] = 32768
     parameters['RX_FIFO_DEPTH'] = 32768
     parameters['MAX_TX_SIZE'] = 9214

@@ -74,6 +74,11 @@ module fpga #
     parameter TX_CHECKSUM_ENABLE = 1,
     parameter RX_HASH_ENABLE = 1,
     parameter RX_CHECKSUM_ENABLE = 1,
+    parameter PFC_ENABLE = 1,
+    parameter LFC_ENABLE = PFC_ENABLE,
+    parameter ENABLE_PADDING = 1,
+    parameter ENABLE_DIC = 1,
+    parameter MIN_FRAME_LENGTH = 64,
     parameter TX_FIFO_DEPTH = 32768,
     parameter RX_FIFO_DEPTH = 32768,
     parameter MAX_TX_SIZE = 9214,
@@ -169,7 +174,6 @@ module fpga #
 parameter PTP_CLK_PERIOD_NS_NUM = 32;
 parameter PTP_CLK_PERIOD_NS_DENOM = 5;
 parameter PTP_TS_WIDTH = 96;
-parameter PTP_USE_SAMPLE_CLOCK = 1;
 parameter IF_PTP_PERIOD_NS = 6'h6;
 parameter IF_PTP_PERIOD_FNS = 16'h6666;
 
@@ -503,12 +507,12 @@ wire                         sfp_tx_clk_int;
 wire                         sfp_tx_rst_int;
 wire [XGMII_DATA_WIDTH-1:0]  sfp_txd_int;
 wire [XGMII_CTRL_WIDTH-1:0]  sfp_txc_int;
-wire                         sfp_tx_prbs31_enable_int;
+wire                         sfp_cfg_tx_prbs31_enable_int;
 wire                         sfp_rx_clk_int;
 wire                         sfp_rx_rst_int;
 wire [XGMII_DATA_WIDTH-1:0]  sfp_rxd_int;
 wire [XGMII_CTRL_WIDTH-1:0]  sfp_rxc_int;
-wire                         sfp_rx_prbs31_enable_int;
+wire                         sfp_cfg_rx_prbs31_enable_int;
 wire [6:0]                   sfp_rx_error_count_int;
 
 wire        sfp_drp_clk = clk_125mhz_int;
@@ -572,7 +576,20 @@ sfp_phy_quad_inst (
      * Common
      */
     .xcvr_gtpowergood_out(sfp_gtpowergood),
-    .xcvr_ref_clk(sfp_mgt_refclk),
+    .xcvr_gtrefclk00_in(sfp_mgt_refclk),
+    .xcvr_qpll0pd_in(1'b0),
+    .xcvr_qpll0reset_in(1'b0),
+    .xcvr_qpll0pcierate_in(3'd0),
+    .xcvr_qpll0lock_out(),
+    .xcvr_qpll0clk_out(),
+    .xcvr_qpll0refclk_out(),
+    .xcvr_gtrefclk01_in(sfp_mgt_refclk),
+    .xcvr_qpll1pd_in(1'b0),
+    .xcvr_qpll1reset_in(1'b0),
+    .xcvr_qpll1pcierate_in(3'd0),
+    .xcvr_qpll1lock_out(),
+    .xcvr_qpll1clk_out(),
+    .xcvr_qpll1refclk_out(),
 
     /*
      * DRP
@@ -612,8 +629,8 @@ sfp_phy_quad_inst (
     .phy_1_rx_block_lock(sfp_rx_block_lock),
     .phy_1_rx_high_ber(),
     .phy_1_rx_status(sfp_rx_status),
-    .phy_1_tx_prbs31_enable(sfp_tx_prbs31_enable_int),
-    .phy_1_rx_prbs31_enable(sfp_rx_prbs31_enable_int)
+    .phy_1_cfg_tx_prbs31_enable(sfp_cfg_tx_prbs31_enable_int),
+    .phy_1_cfg_rx_prbs31_enable(sfp_cfg_rx_prbs31_enable_int)
 );
 
 wire ptp_clk;
@@ -657,7 +674,6 @@ fpga_core #(
     .PTP_TS_WIDTH(PTP_TS_WIDTH),
     .PTP_CLOCK_PIPELINE(PTP_CLOCK_PIPELINE),
     .PTP_CLOCK_CDC_PIPELINE(PTP_CLOCK_CDC_PIPELINE),
-    .PTP_USE_SAMPLE_CLOCK(PTP_USE_SAMPLE_CLOCK),
     .PTP_PORT_CDC_PIPELINE(PTP_PORT_CDC_PIPELINE),
     .PTP_PEROUT_ENABLE(PTP_PEROUT_ENABLE),
     .PTP_PEROUT_COUNT(PTP_PEROUT_COUNT),
@@ -693,6 +709,11 @@ fpga_core #(
     .TX_CHECKSUM_ENABLE(TX_CHECKSUM_ENABLE),
     .RX_HASH_ENABLE(RX_HASH_ENABLE),
     .RX_CHECKSUM_ENABLE(RX_CHECKSUM_ENABLE),
+    .PFC_ENABLE(PFC_ENABLE),
+    .LFC_ENABLE(LFC_ENABLE),
+    .ENABLE_PADDING(ENABLE_PADDING),
+    .ENABLE_DIC(ENABLE_DIC),
+    .MIN_FRAME_LENGTH(MIN_FRAME_LENGTH),
     .TX_FIFO_DEPTH(TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH(RX_FIFO_DEPTH),
     .MAX_TX_SIZE(MAX_TX_SIZE),
@@ -739,6 +760,8 @@ fpga_core #(
     .AXIL_APP_CTRL_STRB_WIDTH(AXIL_APP_CTRL_STRB_WIDTH),
 
     // Ethernet interface configuration
+    .XGMII_DATA_WIDTH(XGMII_DATA_WIDTH),
+    .XGMII_CTRL_WIDTH(XGMII_CTRL_WIDTH),
     .AXIS_ETH_DATA_WIDTH(AXIS_ETH_DATA_WIDTH),
     .AXIS_ETH_KEEP_WIDTH(AXIS_ETH_KEEP_WIDTH),
     .AXIS_ETH_SYNC_DATA_WIDTH(AXIS_ETH_SYNC_DATA_WIDTH),
@@ -875,12 +898,12 @@ core_inst (
     .sfp_tx_rst(sfp_tx_rst_int),
     .sfp_txd(sfp_txd_int),
     .sfp_txc(sfp_txc_int),
-    .sfp_tx_prbs31_enable(sfp_tx_prbs31_enable_int),
+    .sfp_cfg_tx_prbs31_enable(sfp_cfg_tx_prbs31_enable_int),
     .sfp_rx_clk(sfp_rx_clk_int),
     .sfp_rx_rst(sfp_rx_rst_int),
     .sfp_rxd(sfp_rxd_int),
     .sfp_rxc(sfp_rxc_int),
-    .sfp_rx_prbs31_enable(sfp_rx_prbs31_enable_int),
+    .sfp_cfg_rx_prbs31_enable(sfp_cfg_rx_prbs31_enable_int),
     .sfp_rx_error_count(sfp_rx_error_count_int),
     .sfp_rx_status(sfp_rx_status),
 

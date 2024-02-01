@@ -18,10 +18,13 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
 
     // GT type
     parameter GT_GTH = 0,
+    parameter GT_USP = 1,
 
     // PLL parameters
     parameter QPLL0_PD = 1'b0,
     parameter QPLL1_PD = 1'b1,
+    parameter QPLL0_EXT_CTRL = 0,
+    parameter QPLL1_EXT_CTRL = 0,
 
     // GT parameters
     parameter GT_1_TX_PD = 1'b0,
@@ -96,7 +99,20 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
      * Common
      */
     output wire                   xcvr_gtpowergood_out,
-    input  wire                   xcvr_ref_clk,
+    input  wire                   xcvr_gtrefclk00_in,
+    input  wire                   xcvr_qpll0pd_in,
+    input  wire                   xcvr_qpll0reset_in,
+    input  wire [2:0]             xcvr_qpll0pcierate_in,
+    output wire                   xcvr_qpll0lock_out,
+    output wire                   xcvr_qpll0clk_out,
+    output wire                   xcvr_qpll0refclk_out,
+    input  wire                   xcvr_gtrefclk01_in,
+    input  wire                   xcvr_qpll1pd_in,
+    input  wire                   xcvr_qpll1reset_in,
+    input  wire [2:0]             xcvr_qpll1pcierate_in,
+    output wire                   xcvr_qpll1lock_out,
+    output wire                   xcvr_qpll1clk_out,
+    output wire                   xcvr_qpll1refclk_out,
 
     /*
      * DRP
@@ -136,8 +152,8 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
     output wire                   phy_1_rx_block_lock,
     output wire                   phy_1_rx_high_ber,
     output wire                   phy_1_rx_status,
-    input  wire                   phy_1_tx_prbs31_enable,
-    input  wire                   phy_1_rx_prbs31_enable,
+    input  wire                   phy_1_cfg_tx_prbs31_enable,
+    input  wire                   phy_1_cfg_rx_prbs31_enable,
 
     output wire                   phy_2_tx_clk,
     output wire                   phy_2_tx_rst,
@@ -154,8 +170,8 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
     output wire                   phy_2_rx_block_lock,
     output wire                   phy_2_rx_high_ber,
     output wire                   phy_2_rx_status,
-    input  wire                   phy_2_tx_prbs31_enable,
-    input  wire                   phy_2_rx_prbs31_enable,
+    input  wire                   phy_2_cfg_tx_prbs31_enable,
+    input  wire                   phy_2_cfg_rx_prbs31_enable,
 
     output wire                   phy_3_tx_clk,
     output wire                   phy_3_tx_rst,
@@ -172,8 +188,8 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
     output wire                   phy_3_rx_block_lock,
     output wire                   phy_3_rx_high_ber,
     output wire                   phy_3_rx_status,
-    input  wire                   phy_3_tx_prbs31_enable,
-    input  wire                   phy_3_rx_prbs31_enable,
+    input  wire                   phy_3_cfg_tx_prbs31_enable,
+    input  wire                   phy_3_cfg_rx_prbs31_enable,
 
     output wire                   phy_4_tx_clk,
     output wire                   phy_4_tx_rst,
@@ -190,8 +206,8 @@ module eth_xcvr_phy_10g_gty_quad_wrapper #
     output wire                   phy_4_rx_block_lock,
     output wire                   phy_4_rx_high_ber,
     output wire                   phy_4_rx_status,
-    input  wire                   phy_4_tx_prbs31_enable,
-    input  wire                   phy_4_rx_prbs31_enable
+    input  wire                   phy_4_cfg_tx_prbs31_enable,
+    input  wire                   phy_4_cfg_rx_prbs31_enable
 );
 
 generate
@@ -217,14 +233,6 @@ wire drp_rdy_4;
 
 assign drp_do = drp_do_reg;
 assign drp_rdy = drp_rdy_reg;
-
-wire xcvr_qpll0lock;
-wire xcvr_qpll0clk;
-wire xcvr_qpll0refclk;
-
-wire xcvr_qpll1lock;
-wire xcvr_qpll1clk;
-wire xcvr_qpll1refclk;
 
 always @(posedge drp_clk) begin
     drp_en_reg_1 <= 1'b0;
@@ -281,9 +289,12 @@ if (COUNT > 0) begin : phy1
     eth_xcvr_phy_10g_gty_wrapper #(
         .HAS_COMMON(1),
         .GT_GTH(GT_GTH),
+        .GT_USP(GT_USP),
         // PLL
         .QPLL0_PD(QPLL0_PD),
         .QPLL1_PD(QPLL1_PD),
+        .QPLL0_EXT_CTRL(QPLL0_EXT_CTRL),
+        .QPLL1_EXT_CTRL(QPLL1_EXT_CTRL),
         // GT
         .GT_TX_PD(GT_1_TX_PD),
         .GT_TX_QPLL_SEL(GT_1_TX_QPLL_SEL),
@@ -327,14 +338,20 @@ if (COUNT > 0) begin : phy1
         .drp_rdy(drp_rdy_1),
 
         // PLL out
-        .xcvr_gtrefclk00_in(xcvr_ref_clk),
-        .xcvr_qpll0lock_out(xcvr_qpll0lock),
-        .xcvr_qpll0clk_out(xcvr_qpll0clk),
-        .xcvr_qpll0refclk_out(xcvr_qpll0refclk),
-        .xcvr_gtrefclk01_in(xcvr_ref_clk),
-        .xcvr_qpll1lock_out(xcvr_qpll1lock),
-        .xcvr_qpll1clk_out(xcvr_qpll1clk),
-        .xcvr_qpll1refclk_out(xcvr_qpll1refclk),
+        .xcvr_gtrefclk00_in(xcvr_gtrefclk00_in),
+        .xcvr_qpll0pd_in(xcvr_qpll0pd_in),
+        .xcvr_qpll0reset_in(xcvr_qpll0reset_in),
+        .xcvr_qpll0pcierate_in(xcvr_qpll0pcierate_in),
+        .xcvr_qpll0lock_out(xcvr_qpll0lock_out),
+        .xcvr_qpll0clk_out(xcvr_qpll0clk_out),
+        .xcvr_qpll0refclk_out(xcvr_qpll0refclk_out),
+        .xcvr_gtrefclk01_in(xcvr_gtrefclk01_in),
+        .xcvr_qpll1pd_in(xcvr_qpll1pd_in),
+        .xcvr_qpll1reset_in(xcvr_qpll1reset_in),
+        .xcvr_qpll1pcierate_in(xcvr_qpll1pcierate_in),
+        .xcvr_qpll1lock_out(xcvr_qpll1lock_out),
+        .xcvr_qpll1clk_out(xcvr_qpll1clk_out),
+        .xcvr_qpll1refclk_out(xcvr_qpll1refclk_out),
 
         // PLL in
         .xcvr_qpll0lock_in(1'b0),
@@ -366,8 +383,8 @@ if (COUNT > 0) begin : phy1
         .phy_rx_block_lock(phy_1_rx_block_lock),
         .phy_rx_high_ber(phy_1_rx_high_ber),
         .phy_rx_status(phy_1_rx_status),
-        .phy_tx_prbs31_enable(phy_1_tx_prbs31_enable),
-        .phy_rx_prbs31_enable(phy_1_rx_prbs31_enable)
+        .phy_cfg_tx_prbs31_enable(phy_1_cfg_tx_prbs31_enable),
+        .phy_cfg_rx_prbs31_enable(phy_1_cfg_rx_prbs31_enable)
     );
 
 end else begin
@@ -382,6 +399,7 @@ if (COUNT > 1) begin : phy2
     eth_xcvr_phy_10g_gty_wrapper #(
         .HAS_COMMON(0),
         .GT_GTH(GT_GTH),
+        .GT_USP(GT_USP),
         // GT
         .GT_TX_PD(GT_2_TX_PD),
         .GT_TX_QPLL_SEL(GT_2_TX_QPLL_SEL),
@@ -426,21 +444,27 @@ if (COUNT > 1) begin : phy2
 
         // PLL out
         .xcvr_gtrefclk00_in(1'b0),
+        .xcvr_qpll0pd_in(1'b0),
+        .xcvr_qpll0reset_in(1'b0),
+        .xcvr_qpll0pcierate_in(3'b000),
         .xcvr_qpll0lock_out(),
         .xcvr_qpll0clk_out(),
         .xcvr_qpll0refclk_out(),
         .xcvr_gtrefclk01_in(1'b0),
+        .xcvr_qpll1pd_in(1'b0),
+        .xcvr_qpll1reset_in(1'b0),
+        .xcvr_qpll1pcierate_in(3'b000),
         .xcvr_qpll1lock_out(),
         .xcvr_qpll1clk_out(),
         .xcvr_qpll1refclk_out(),
 
         // PLL in
-        .xcvr_qpll0lock_in(xcvr_qpll0lock),
-        .xcvr_qpll0clk_in(xcvr_qpll0clk),
-        .xcvr_qpll0refclk_in(xcvr_qpll0refclk),
-        .xcvr_qpll1lock_in(xcvr_qpll1lock),
-        .xcvr_qpll1clk_in(xcvr_qpll1clk),
-        .xcvr_qpll1refclk_in(xcvr_qpll1refclk),
+        .xcvr_qpll0lock_in(xcvr_qpll0lock_out),
+        .xcvr_qpll0clk_in(xcvr_qpll0clk_out),
+        .xcvr_qpll0refclk_in(xcvr_qpll0refclk_out),
+        .xcvr_qpll1lock_in(xcvr_qpll1lock_out),
+        .xcvr_qpll1clk_in(xcvr_qpll1clk_out),
+        .xcvr_qpll1refclk_in(xcvr_qpll1refclk_out),
 
         // Serial data
         .xcvr_txp(xcvr_txp[1]),
@@ -464,8 +488,8 @@ if (COUNT > 1) begin : phy2
         .phy_rx_block_lock(phy_2_rx_block_lock),
         .phy_rx_high_ber(phy_2_rx_high_ber),
         .phy_rx_status(phy_2_rx_status),
-        .phy_tx_prbs31_enable(phy_2_tx_prbs31_enable),
-        .phy_rx_prbs31_enable(phy_2_rx_prbs31_enable)
+        .phy_cfg_tx_prbs31_enable(phy_2_cfg_tx_prbs31_enable),
+        .phy_cfg_rx_prbs31_enable(phy_2_cfg_rx_prbs31_enable)
     );
 
 end else begin
@@ -480,6 +504,7 @@ if (COUNT > 2) begin : phy3
     eth_xcvr_phy_10g_gty_wrapper #(
         .HAS_COMMON(0),
         .GT_GTH(GT_GTH),
+        .GT_USP(GT_USP),
         // GT
         .GT_TX_PD(GT_3_TX_PD),
         .GT_TX_QPLL_SEL(GT_3_TX_QPLL_SEL),
@@ -524,21 +549,27 @@ if (COUNT > 2) begin : phy3
 
         // PLL out
         .xcvr_gtrefclk00_in(1'b0),
+        .xcvr_qpll0pd_in(1'b0),
+        .xcvr_qpll0reset_in(1'b0),
+        .xcvr_qpll0pcierate_in(3'b000),
         .xcvr_qpll0lock_out(),
         .xcvr_qpll0clk_out(),
         .xcvr_qpll0refclk_out(),
         .xcvr_gtrefclk01_in(1'b0),
+        .xcvr_qpll1pd_in(1'b0),
+        .xcvr_qpll1reset_in(1'b0),
+        .xcvr_qpll1pcierate_in(3'b000),
         .xcvr_qpll1lock_out(),
         .xcvr_qpll1clk_out(),
         .xcvr_qpll1refclk_out(),
 
         // PLL in
-        .xcvr_qpll0lock_in(xcvr_qpll0lock),
-        .xcvr_qpll0clk_in(xcvr_qpll0clk),
-        .xcvr_qpll0refclk_in(xcvr_qpll0refclk),
-        .xcvr_qpll1lock_in(xcvr_qpll1lock),
-        .xcvr_qpll1clk_in(xcvr_qpll1clk),
-        .xcvr_qpll1refclk_in(xcvr_qpll1refclk),
+        .xcvr_qpll0lock_in(xcvr_qpll0lock_out),
+        .xcvr_qpll0clk_in(xcvr_qpll0clk_out),
+        .xcvr_qpll0refclk_in(xcvr_qpll0refclk_out),
+        .xcvr_qpll1lock_in(xcvr_qpll1lock_out),
+        .xcvr_qpll1clk_in(xcvr_qpll1clk_out),
+        .xcvr_qpll1refclk_in(xcvr_qpll1refclk_out),
 
         // Serial data
         .xcvr_txp(xcvr_txp[2]),
@@ -562,8 +593,8 @@ if (COUNT > 2) begin : phy3
         .phy_rx_block_lock(phy_3_rx_block_lock),
         .phy_rx_high_ber(phy_3_rx_high_ber),
         .phy_rx_status(phy_3_rx_status),
-        .phy_tx_prbs31_enable(phy_3_tx_prbs31_enable),
-        .phy_rx_prbs31_enable(phy_3_rx_prbs31_enable)
+        .phy_cfg_tx_prbs31_enable(phy_3_cfg_tx_prbs31_enable),
+        .phy_cfg_rx_prbs31_enable(phy_3_cfg_rx_prbs31_enable)
     );
 
 end else begin
@@ -578,6 +609,7 @@ if (COUNT > 3) begin : phy4
     eth_xcvr_phy_10g_gty_wrapper #(
         .HAS_COMMON(0),
         .GT_GTH(GT_GTH),
+        .GT_USP(GT_USP),
         // GT
         .GT_TX_PD(GT_4_TX_PD),
         .GT_TX_QPLL_SEL(GT_4_TX_QPLL_SEL),
@@ -622,21 +654,27 @@ if (COUNT > 3) begin : phy4
 
         // PLL out
         .xcvr_gtrefclk00_in(1'b0),
+        .xcvr_qpll0pd_in(1'b0),
+        .xcvr_qpll0reset_in(1'b0),
+        .xcvr_qpll0pcierate_in(3'b000),
         .xcvr_qpll0lock_out(),
         .xcvr_qpll0clk_out(),
         .xcvr_qpll0refclk_out(),
         .xcvr_gtrefclk01_in(1'b0),
+        .xcvr_qpll1pd_in(1'b0),
+        .xcvr_qpll1reset_in(1'b0),
+        .xcvr_qpll1pcierate_in(3'b000),
         .xcvr_qpll1lock_out(),
         .xcvr_qpll1clk_out(),
         .xcvr_qpll1refclk_out(),
 
         // PLL in
-        .xcvr_qpll0lock_in(xcvr_qpll0lock),
-        .xcvr_qpll0clk_in(xcvr_qpll0clk),
-        .xcvr_qpll0refclk_in(xcvr_qpll0refclk),
-        .xcvr_qpll1lock_in(xcvr_qpll1lock),
-        .xcvr_qpll1clk_in(xcvr_qpll1clk),
-        .xcvr_qpll1refclk_in(xcvr_qpll1refclk),
+        .xcvr_qpll0lock_in(xcvr_qpll0lock_out),
+        .xcvr_qpll0clk_in(xcvr_qpll0clk_out),
+        .xcvr_qpll0refclk_in(xcvr_qpll0refclk_out),
+        .xcvr_qpll1lock_in(xcvr_qpll1lock_out),
+        .xcvr_qpll1clk_in(xcvr_qpll1clk_out),
+        .xcvr_qpll1refclk_in(xcvr_qpll1refclk_out),
 
         // Serial data
         .xcvr_txp(xcvr_txp[3]),
@@ -660,8 +698,8 @@ if (COUNT > 3) begin : phy4
         .phy_rx_block_lock(phy_4_rx_block_lock),
         .phy_rx_high_ber(phy_4_rx_high_ber),
         .phy_rx_status(phy_4_rx_status),
-        .phy_tx_prbs31_enable(phy_4_tx_prbs31_enable),
-        .phy_rx_prbs31_enable(phy_4_rx_prbs31_enable)
+        .phy_cfg_tx_prbs31_enable(phy_4_cfg_tx_prbs31_enable),
+        .phy_cfg_rx_prbs31_enable(phy_4_cfg_rx_prbs31_enable)
     );
 
 end else begin

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause-Views
+# Copyright (c) 2019-2023 The Regents of the University of California
 
 # FPGA settings
 FPGA_PART = xcvu095-ffva2104-2-e
@@ -63,6 +65,10 @@ SYN_FILES += app/dma_bench/rtl/dram_test_ch.v
 SYN_FILES += lib/eth/rtl/eth_mac_10g.v
 SYN_FILES += lib/eth/rtl/axis_xgmii_rx_64.v
 SYN_FILES += lib/eth/rtl/axis_xgmii_tx_64.v
+SYN_FILES += lib/eth/rtl/mac_ctrl_rx.v
+SYN_FILES += lib/eth/rtl/mac_ctrl_tx.v
+SYN_FILES += lib/eth/rtl/mac_pause_ctrl_rx.v
+SYN_FILES += lib/eth/rtl/mac_pause_ctrl_tx.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g_rx.v
 SYN_FILES += lib/eth/rtl/eth_phy_10g_rx_if.v
@@ -74,8 +80,8 @@ SYN_FILES += lib/eth/rtl/eth_phy_10g_tx_if.v
 SYN_FILES += lib/eth/rtl/xgmii_baser_dec_64.v
 SYN_FILES += lib/eth/rtl/xgmii_baser_enc_64.v
 SYN_FILES += lib/eth/rtl/lfsr.v
-SYN_FILES += lib/eth/rtl/ptp_clock.v
-SYN_FILES += lib/eth/rtl/ptp_clock_cdc.v
+SYN_FILES += lib/eth/rtl/ptp_td_phc.v
+SYN_FILES += lib/eth/rtl/ptp_td_leaf.v
 SYN_FILES += lib/eth/rtl/ptp_perout.v
 SYN_FILES += lib/axi/rtl/axi_vfifo_raw.v
 SYN_FILES += lib/axi/rtl/axi_vfifo_raw_rd.v
@@ -139,7 +145,7 @@ XDC_FILES += lib/axi/syn/vivado/axi_vfifo_raw_wr.tcl
 XDC_FILES += lib/axi/syn/vivado/axi_vfifo_raw_rd.tcl
 XDC_FILES += lib/axis/syn/vivado/axis_async_fifo.tcl
 XDC_FILES += lib/axis/syn/vivado/sync_reset.tcl
-XDC_FILES += lib/eth/syn/vivado/ptp_clock_cdc.tcl
+XDC_FILES += lib/eth/syn/vivado/ptp_td_leaf.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_port.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_ptp_clock.tcl
 XDC_FILES += ../../../common/syn/vivado/mqnic_rb_clk_info.tcl

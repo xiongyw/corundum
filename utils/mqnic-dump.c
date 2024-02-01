@@ -108,9 +108,13 @@ int main(int argc, char *argv[])
         uint32_t ns;
         uint32_t fns;
 
-        printf("PHC time: %ld.%09d s\n", mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_SEC_L) +
-                (((int64_t)mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_SEC_H)) << 32),
-                mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_NS));
+        printf("PHC ctrl: 0x%08x\n", mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CTRL));
+
+        printf("PHC time (ToD): %ld.%09d s\n", mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_TOD_SEC_L) +
+                (((int64_t)mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_TOD_SEC_H)) << 32),
+                mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_TOD_NS));
+        printf("PHC time (rel): %ld ns\n", mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_REL_NS_L) +
+                (((int64_t)mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_CUR_REL_NS_H)) << 32));
 
         ns = mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_PERIOD_NS);
         fns = mqnic_reg_read32(dev->phc_rb->regs, MQNIC_RB_PHC_REG_PERIOD_FNS);
@@ -221,10 +225,12 @@ int main(int argc, char *argv[])
     printf("IF features: 0x%08x\n", dev_interface->if_features);
     printf("Port count: %d\n", dev_interface->port_count);
     printf("Scheduler block count: %d\n", dev_interface->sched_block_count);
-    printf("Max TX MTU: %d\n", dev_interface->max_tx_mtu);
-    printf("Max RX MTU: %d\n", dev_interface->max_rx_mtu);
-    printf("TX MTU: %d\n", mqnic_interface_get_tx_mtu(dev_interface));
-    printf("RX MTU: %d\n", mqnic_interface_get_rx_mtu(dev_interface));
+    printf("Max TX MTU: %d B\n", dev_interface->max_tx_mtu);
+    printf("Max RX MTU: %d B\n", dev_interface->max_rx_mtu);
+    printf("TX MTU: %d B\n", mqnic_interface_get_tx_mtu(dev_interface));
+    printf("RX MTU: %d B\n", mqnic_interface_get_rx_mtu(dev_interface));
+    printf("TX FIFO depth: %d B\n", dev_interface->tx_fifo_depth);
+    printf("RX FIFO depth: %d B\n", dev_interface->rx_fifo_depth);
 
     printf("EQ offset: 0x%08lx\n", dev_interface->eq_res->base - dev_interface->regs);
     printf("EQ count: %d\n", mqnic_res_get_count(dev_interface->eq_res));
@@ -281,8 +287,12 @@ int main(int argc, char *argv[])
                 (rb->version >> 16) & 0xff, (rb->version >> 8) & 0xff, rb->version & 0xff);
 
     printf("Port features: 0x%08x\n", dev_port->port_features);
-    printf("Port TX status: 0x%08x\n", mqnic_port_get_tx_status(dev_port));
-    printf("Port RX status: 0x%08x\n", mqnic_port_get_rx_status(dev_port));
+    printf("Port TX ctrl: 0x%08x\n", mqnic_port_get_tx_ctrl(dev_port));
+    printf("Port RX ctrl: 0x%08x\n", mqnic_port_get_rx_ctrl(dev_port));
+    printf("Port FC ctrl: 0x%08x\n", mqnic_port_get_fc_ctrl(dev_port));
+    printf("Port LFC ctrl: 0x%08x\n", mqnic_port_get_lfc_ctrl(dev_port));
+    for (int k = 0; k < 8; k++)
+        printf("Port PFC ctrl %d: 0x%08x\n", k, mqnic_port_get_pfc_ctrl(dev_port, k));
 
     sched_block = port;
 

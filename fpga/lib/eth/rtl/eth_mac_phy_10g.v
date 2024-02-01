@@ -43,11 +43,12 @@ module eth_mac_phy_10g #
     parameter PTP_PERIOD_FNS = 16'h6666,
     parameter TX_PTP_TS_ENABLE = 0,
     parameter TX_PTP_TS_WIDTH = 96,
+    parameter TX_PTP_TS_CTRL_IN_TUSER = 0,
     parameter TX_PTP_TAG_ENABLE = TX_PTP_TS_ENABLE,
     parameter TX_PTP_TAG_WIDTH = 16,
-    parameter RX_PTP_TS_ENABLE = 0,
+    parameter RX_PTP_TS_ENABLE = TX_PTP_TS_ENABLE,
     parameter RX_PTP_TS_WIDTH = 96,
-    parameter TX_USER_WIDTH = (TX_PTP_TAG_ENABLE ? TX_PTP_TAG_WIDTH : 0) + 1,
+    parameter TX_USER_WIDTH = (TX_PTP_TS_ENABLE ? (TX_PTP_TAG_ENABLE ? TX_PTP_TAG_WIDTH : 0) + (TX_PTP_TS_CTRL_IN_TUSER ? 1 : 0) : 0) + 1,
     parameter RX_USER_WIDTH = (RX_PTP_TS_ENABLE ? RX_PTP_TS_WIDTH : 0) + 1,
     parameter BIT_REVERSE = 0,
     parameter SCRAMBLER_DISABLE = 0,
@@ -119,9 +120,11 @@ module eth_mac_phy_10g #
     /*
      * Configuration
      */
-    input  wire [7:0]                   ifg_delay,
-    input  wire                         tx_prbs31_enable,
-    input  wire                         rx_prbs31_enable
+    input  wire [7:0]                   cfg_ifg,
+    input  wire                         cfg_tx_enable,
+    input  wire                         cfg_rx_enable,
+    input  wire                         cfg_tx_prbs31_enable,
+    input  wire                         cfg_rx_prbs31_enable
 );
 
 eth_mac_phy_10g_rx #(
@@ -162,7 +165,8 @@ eth_mac_phy_10g_rx_inst (
     .rx_block_lock(rx_block_lock),
     .rx_high_ber(rx_high_ber),
     .rx_status(rx_status),
-    .rx_prbs31_enable(rx_prbs31_enable)
+    .cfg_rx_enable(cfg_rx_enable),
+    .cfg_rx_prbs31_enable(cfg_rx_prbs31_enable)
 );
 
 eth_mac_phy_10g_tx #(
@@ -176,6 +180,7 @@ eth_mac_phy_10g_tx #(
     .PTP_PERIOD_FNS(PTP_PERIOD_FNS),
     .PTP_TS_ENABLE(TX_PTP_TS_ENABLE),
     .PTP_TS_WIDTH(TX_PTP_TS_WIDTH),
+    .PTP_TS_CTRL_IN_TUSER(TX_PTP_TS_CTRL_IN_TUSER),
     .PTP_TAG_ENABLE(TX_PTP_TAG_ENABLE),
     .PTP_TAG_WIDTH(TX_PTP_TAG_WIDTH),
     .USER_WIDTH(TX_USER_WIDTH),
@@ -201,8 +206,9 @@ eth_mac_phy_10g_tx_inst (
     .m_axis_ptp_ts_valid(tx_axis_ptp_ts_valid),
     .tx_start_packet(tx_start_packet),
     .tx_error_underflow(tx_error_underflow),
-    .ifg_delay(ifg_delay),
-    .tx_prbs31_enable(tx_prbs31_enable)
+    .cfg_ifg(cfg_ifg),
+    .cfg_tx_enable(cfg_tx_enable),
+    .cfg_tx_prbs31_enable(cfg_tx_prbs31_enable)
 );
 
 endmodule
